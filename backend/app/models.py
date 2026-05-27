@@ -1,128 +1,115 @@
 """
-SQLAlchemy ORM models
+Pydantic models for MongoDB
 """
-from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, ForeignKey, Table, Text, JSON
-from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import UUID
-from datetime import datetime, timezone
+from pydantic import BaseModel, Field, EmailStr
+from datetime import datetime
+from typing import Optional, List
+from enum import Enum
 import uuid
-from app.database import Base
 
 
-# Association table for amenities (many-to-many)
-property_amenities = Table(
-    'property_amenities',
-    Base.metadata,
-    Column('property_id', UUID(as_uuid=True), ForeignKey('properties.id')),
-    Column('amenity', String)
-)
+class UserRole(str, Enum):
+    ADMIN = "admin"
+    SELLER = "seller"
+    BUYER = "buyer"
+    AGENT = "agent"
 
 
-class User(Base):
-    """User model"""
-    __tablename__ = "users"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    email = Column(String, unique=True, index=True, nullable=False)
-    first_name = Column(String, nullable=False)
-    last_name = Column(String, nullable=False)
-    phone_number = Column(String, nullable=True)
-    password_hash = Column(String, nullable=False)
-    role = Column(String, default="buyer", nullable=False)  # admin, seller, buyer, agent
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-
-    # Relationships
-    properties = relationship("Property", back_populates="owner", cascade="all, delete-orphan")
-    inquiries = relationship("Inquiry", back_populates="user", cascade="all, delete-orphan")
-    wishlists = relationship("Wishlist", back_populates="user", cascade="all, delete-orphan")
-
-    def __repr__(self):
-        return f"<User(id={self.id}, email={self.email}, role={self.role})>"
+class PropertyStatus(str, Enum):
+    LISTED = "listed"
+    SOLD = "sold"
+    RENTED = "rented"
+    PENDING = "pending"
 
 
-class Property(Base):
-    """Property listing model"""
-    __tablename__ = "properties"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False, index=True)
-    title = Column(String, nullable=False, index=True)
-    description = Column(Text, nullable=True)
-    location = Column(String, nullable=False, index=True)
-    city = Column(String, nullable=False, index=True)
-    state = Column(String, nullable=False)
-    country = Column(String, nullable=False)
-    price = Column(Float, nullable=False, index=True)
-    property_type = Column(String, nullable=False, index=True)  # apartment, house, condo, etc.
-    bedrooms = Column(Integer, nullable=False, index=True)
-    bathrooms = Column(Integer, nullable=False)
-    area = Column(Float, nullable=False)  # in sq ft
-    amenities = Column(JSON, default=list)  # List of amenities
-    images = Column(JSON, default=list)  # List of image URLs
-    status = Column(String, default="listed", nullable=False, index=True)  # listed, sold, rented, pending
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-
-    # Relationships
-    owner = relationship("User", back_populates="properties")
-    inquiries = relationship("Inquiry", back_populates="property", cascade="all, delete-orphan")
-    wishlists = relationship("Wishlist", back_populates="property", cascade="all, delete-orphan")
-
-    def __repr__(self):
-        return f"<Property(id={self.id}, title={self.title}, price={self.price})>"
+class InquiryStatus(str, Enum):
+    PENDING = "pending"
+    RESPONDED = "responded"
+    CLOSED = "closed"
 
 
-class Inquiry(Base):
-    """Property inquiry model"""
-    __tablename__ = "inquiries"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False, index=True)
-    property_id = Column(UUID(as_uuid=True), ForeignKey('properties.id'), nullable=False, index=True)
-    message = Column(Text, nullable=False)
-    status = Column(String, default="pending", nullable=False)  # pending, responded, closed
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-
-    # Relationships
-    user = relationship("User", back_populates="inquiries")
-    property = relationship("Property", back_populates="inquiries")
-
-    def __repr__(self):
-        return f"<Inquiry(id={self.id}, user_id={self.user_id}, property_id={self.property_id})>"
+class PropertyType(str, Enum):
+    APARTMENT = "apartment"
+    HOUSE = "house"
+    CONDO = "condo"
+    TOWNHOUSE = "townhouse"
+    LAND = "land"
+    COMMERCIAL = "commercial"
 
 
-class Wishlist(Base):
-    """User wishlist model"""
-    __tablename__ = "wishlists"
+# MongoDB Document Models
+class User(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    email: EmailStr
+    first_name: str
+    last_name: str
+    phone_number: Optional[str] = None
+    password_hash: str
+    role: UserRole = UserRole.BUYER
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False, index=True)
-    property_id = Column(UUID(as_uuid=True), ForeignKey('properties.id'), nullable=False, index=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-
-    # Relationships
-    user = relationship("User", back_populates="wishlists")
-    property = relationship("Property", back_populates="wishlists")
-
-    def __repr__(self):
-        return f"<Wishlist(id={self.id}, user_id={self.user_id}, property_id={self.property_id})>"
+    class Config:
+        collection_name = "users"
 
 
-class AuditLog(Base):
-    """Audit log for admin actions"""
-    __tablename__ = "audit_logs"
+class Property(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    title: str
+    description: Optional[str] = None
+    location: str
+    city: str
+    state: str
+    country: str
+    price: float
+    property_type: PropertyType
+    bedrooms: int
+    bathrooms: int
+    area: float
+    amenities: List[str] = []
+    images: List[str] = []
+    status: PropertyStatus = PropertyStatus.LISTED
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=True)
-    action = Column(String, nullable=False)
-    resource_type = Column(String, nullable=False)
-    resource_id = Column(String, nullable=True)
-    details = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    class Config:
+        collection_name = "properties"
 
-    def __repr__(self):
-        return f"<AuditLog(id={self.id}, action={self.action}, resource_type={self.resource_type})>"
+
+class Inquiry(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    property_id: str
+    message: str
+    status: InquiryStatus = InquiryStatus.PENDING
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        collection_name = "inquiries"
+
+
+class Wishlist(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    property_id: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        collection_name = "wishlists"
+
+
+class AuditLog(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: Optional[str] = None
+    action: str
+    resource_type: str
+    resource_id: Optional[str] = None
+    details: Optional[dict] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        collection_name = "audit_logs"
 
