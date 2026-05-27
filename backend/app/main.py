@@ -39,6 +39,7 @@ async def lifespan(app: FastAPI):
         logger.info("Database initialized successfully")
     except Exception as e:
         logger.error(f"Database initialization error: {e}")
+        # Don't raise - allow app to start even if DB fails
 
     # Initialize cache
     await init_cache()

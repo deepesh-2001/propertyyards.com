@@ -2,10 +2,8 @@
 Admin routes
 """
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
-from app.database import get_db
-from app.models import User, Property, Inquiry, Wishlist, AuditLog
+from app.database import get_database
+from app.models import AuditLog
 from app.schemas import AdminStats, UserStats, PropertyStats, UserResponse, PropertyResponse
 from app.auth import decode_token
 from app.cache import invalidate_cache_pattern, generate_cache_key, get_from_cache, set_in_cache
@@ -34,7 +32,7 @@ def get_current_admin(authorization: str = None) -> dict:
 @router.get("/analytics", response_model=AdminStats)
 async def get_analytics(
     authorization: str = None,
-    db: Session = Depends(get_db)
+    db = Depends(get_database)
 ):
     """Get platform analytics"""
     admin_user = get_current_admin(authorization)
@@ -46,20 +44,24 @@ async def get_analytics(
         return AdminStats(**cached_stats)
 
     # Calculate statistics
-    total_users = db.query(func.count(User.id)).scalar()
-    active_users = db.query(func.count(User.id)).filter(User.is_active == True).scalar()
-    total_sellers = db.query(func.count(User.id)).filter(User.role == "seller").scalar()
-    total_buyers = db.query(func.count(User.id)).filter(User.role == "buyer").scalar()
-    total_agents = db.query(func.count(User.id)).filter(User.role == "agent").scalar()
+    total_users = await db.users.count_documents({})
+    active_users = await db.users.count_documents({"is_active": True})
+    total_sellers = await db.users.count_documents({"role": "seller"})
+    total_buyers = await db.users.count_documents({"role": "buyer"})
+    total_agents = await db.users.count_documents({"role": "agent"})
 
-    total_properties = db.query(func.count(Property.id)).scalar()
-    active_listings = db.query(func.count(Property.id)).filter(Property.status == "listed").scalar()
-    sold_properties = db.query(func.count(Property.id)).filter(Property.status == "sold").scalar()
-    rented_properties = db.query(func.count(Property.id)).filter(Property.status == "rented").scalar()
-    total_value = db.query(func.sum(Property.price)).scalar() or 0
+    total_properties = await db.properties.count_documents({})
+    active_listings = await db.properties.count_documents({"status": "listed"})
+    sold_properties = await db.properties.count_documents({"status": "sold"})
+    rented_properties = await db.properties.count_documents({"status": "rented"})
+    
+    # Calculate total value
+    properties_cursor = db.properties.find({}, {"price": 1})
+    properties = await properties_cursor.to_list(length=None)
+    total_value = sum(p.get("price", 0) for p in properties)
 
-    total_inquiries = db.query(func.count(Inquiry.id)).scalar()
-    total_wishlist = db.query(func.count(Wishlist.id)).scalar()
+    total_inquiries = await db.inquiries.count_documents({})
+    total_wishlist = await db.wishlists.count_documents({})
 
     stats = AdminStats(
         users=UserStats(
@@ -92,20 +94,30 @@ async def get_all_users(
     limit: int = 50,
     role: str = None,
     authorization: str = None,
-    db: Session = Depends(get_db)
+    db = Depends(get_database)
 ):
     """Get all users (admin only)"""
     admin_user = get_current_admin(authorization)
 
     # Build query
-    query = db.query(User)
+    query_filter = {}
     if role:
-        query = query.filter(User.role == role)
+        query_filter["role"] = role
 
-    total = query.count()
-    users = query.offset((page - 1) * limit).limit(limit).all()
+    skip = (page - 1) * limit
+    users_cursor = db.users.find(query_filter).skip(skip).limit(limit)
+    users = await users_cursor.to_list(length=limit)
 
-    return users
+    # Convert to response format
+    user_responses = []
+    for user in users:
+        user_dict = {
+            "id": str(user["_id"]),
+            **{k: v for k, v in user.items() if k != "_id"}
+        }
+        user_responses.append(UserResponse(**user_dict))
+
+    return user_responses
 
 
 @router.get("/properties", response_model=list[PropertyResponse])
@@ -114,39 +126,48 @@ async def get_all_properties(
     limit: int = 50,
     status: str = None,
     authorization: str = None,
-    db: Session = Depends(get_db)
+    db = Depends(get_database)
 ):
     """Get all properties (admin only)"""
     admin_user = get_current_admin(authorization)
 
     # Build query
-    query = db.query(Property)
+    query_filter = {}
     if status:
-        query = query.filter(Property.status == status)
+        query_filter["status"] = status
 
-    total = query.count()
-    properties = query.offset((page - 1) * limit).limit(limit).all()
+    skip = (page - 1) * limit
+    properties_cursor = db.properties.find(query_filter).skip(skip).limit(limit)
+    properties = await properties_cursor.to_list(length=limit)
 
-    return properties
+    # Convert to response format
+    property_responses = []
+    for prop in properties:
+        prop_dict = {
+            "id": str(prop["_id"]),
+            **{k: v for k, v in prop.items() if k != "_id"}
+        }
+        property_responses.append(PropertyResponse(**prop_dict))
+
+    return property_responses
 
 
 @router.post("/properties/{property_id}/approve")
 async def approve_property(
     property_id: str,
     authorization: str = None,
-    db: Session = Depends(get_db)
+    db = Depends(get_database)
 ):
     """Approve a property listing"""
     admin_user = get_current_admin(authorization)
 
     # Get property
-    property = db.query(Property).filter(Property.id == property_id).first()
+    property = await db.properties.find_one({"_id": property_id})
     if not property:
         raise HTTPException(status_code=404, detail="Property not found")
 
     # Update status
-    property.status = "listed"
-    db.commit()
+    await db.properties.update_one({"_id": property_id}, {"$set": {"status": "listed"}})
 
     # Log audit
     audit_log = AuditLog(
@@ -156,8 +177,7 @@ async def approve_property(
         resource_id=property_id,
         details={"status": "listed"}
     )
-    db.add(audit_log)
-    db.commit()
+    await db.audit_logs.insert_one(audit_log.dict())
 
     # Invalidate cache
     await invalidate_cache_pattern("properties:*")
@@ -172,18 +192,18 @@ async def reject_property(
     property_id: str,
     reason: str = None,
     authorization: str = None,
-    db: Session = Depends(get_db)
+    db = Depends(get_database)
 ):
     """Reject a property listing"""
     admin_user = get_current_admin(authorization)
 
     # Get property
-    property = db.query(Property).filter(Property.id == property_id).first()
+    property = await db.properties.find_one({"_id": property_id})
     if not property:
         raise HTTPException(status_code=404, detail="Property not found")
 
     # Delete property
-    db.delete(property)
+    await db.properties.delete_one({"_id": property_id})
 
     # Log audit
     audit_log = AuditLog(
@@ -193,8 +213,7 @@ async def reject_property(
         resource_id=property_id,
         details={"reason": reason}
     )
-    db.add(audit_log)
-    db.commit()
+    await db.audit_logs.insert_one(audit_log.dict())
 
     # Invalidate cache
     await invalidate_cache_pattern("properties:*")
@@ -208,22 +227,22 @@ async def reject_property(
 async def delete_user(
     user_id: str,
     authorization: str = None,
-    db: Session = Depends(get_db)
+    db = Depends(get_database)
 ):
     """Delete a user (admin only)"""
     admin_user = get_current_admin(authorization)
 
     # Get user
-    user = db.query(User).filter(User.id == user_id).first()
+    user = await db.users.find_one({"_id": user_id})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
     # Prevent deleting admin
-    if user.role == "admin":
+    if user["role"] == "admin":
         raise HTTPException(status_code=400, detail="Cannot delete admin users")
 
     # Delete user
-    db.delete(user)
+    await db.users.delete_one({"_id": user_id})
 
     # Log audit
     audit_log = AuditLog(
@@ -231,10 +250,9 @@ async def delete_user(
         action="delete_user",
         resource_type="user",
         resource_id=user_id,
-        details={"email": user.email}
+        details={"email": user["email"]}
     )
-    db.add(audit_log)
-    db.commit()
+    await db.audit_logs.insert_one(audit_log.dict())
 
     logger.info(f"User deleted: {user_id}")
 
@@ -245,19 +263,18 @@ async def delete_user(
 async def deactivate_user(
     user_id: str,
     authorization: str = None,
-    db: Session = Depends(get_db)
+    db = Depends(get_database)
 ):
     """Deactivate a user"""
     admin_user = get_current_admin(authorization)
 
     # Get user
-    user = db.query(User).filter(User.id == user_id).first()
+    user = await db.users.find_one({"_id": user_id})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
     # Deactivate user
-    user.is_active = False
-    db.commit()
+    await db.users.update_one({"_id": user_id}, {"$set": {"is_active": False}})
 
     # Log audit
     audit_log = AuditLog(
@@ -266,8 +283,7 @@ async def deactivate_user(
         resource_type="user",
         resource_id=user_id
     )
-    db.add(audit_log)
-    db.commit()
+    await db.audit_logs.insert_one(audit_log.dict())
 
     logger.info(f"User deactivated: {user_id}")
 
@@ -280,17 +296,20 @@ async def get_audit_logs(
     limit: int = 50,
     action: str = None,
     authorization: str = None,
-    db: Session = Depends(get_db)
+    db = Depends(get_database)
 ):
     """Get audit logs"""
     admin_user = get_current_admin(authorization)
 
     # Build query
-    query = db.query(AuditLog)
+    query_filter = {}
     if action:
-        query = query.filter(AuditLog.action == action)
+        query_filter["action"] = action
 
-    logs = query.order_by(AuditLog.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+    skip = (page - 1) * limit
+    logs_cursor = db.audit_logs.find(query_filter).sort("created_at", -1).skip(skip).limit(limit)
+    logs = await logs_cursor.to_list(length=limit)
 
+    # Convert to list format
     return logs
 

@@ -2,8 +2,7 @@
 Authentication routes
 """
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from app.database import get_db
+from app.database import get_database
 from app.models import User
 from app.schemas import UserCreate, TokenResponse, TokenRequest, RefreshTokenRequest, UserResponse
 from app.auth import (
@@ -21,10 +20,10 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
 @router.post("/register", response_model=UserResponse)
-async def register(user_data: UserCreate, db: Session = Depends(get_db)):
+async def register(user_data: UserCreate, db = Depends(get_database)):
     """Register a new user"""
     # Check if user already exists
-    existing_user = db.query(User).filter(User.email == user_data.email).first()
+    existing_user = await db.users.find_one({"email": user_data.email})
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -41,36 +40,35 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
         role=user_data.role
     )
 
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+    result = await db.users.insert_one(new_user.dict())
+    new_user.id = str(result.inserted_id)
 
     logger.info(f"New user registered: {new_user.email}")
     return new_user
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(credentials: TokenRequest, db: Session = Depends(get_db)):
+async def login(credentials: TokenRequest, db = Depends(get_database)):
     """Login user and get tokens"""
     # Find user
-    user = db.query(User).filter(User.email == credentials.email).first()
-    if not user or not verify_password(credentials.password, user.password_hash):
+    user = await db.users.find_one({"email": credentials.email})
+    if not user or not verify_password(credentials.password, user["password_hash"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials"
         )
 
-    if not user.is_active:
+    if not user.get("is_active", True):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive"
         )
 
     # Create tokens
-    access_token = create_access_token(str(user.id), user.email, user.role)
-    refresh_token = create_refresh_token(str(user.id), user.email, user.role)
+    access_token = create_access_token(str(user["_id"]), user["email"], user["role"])
+    refresh_token = create_refresh_token(str(user["_id"]), user["email"], user["role"])
 
-    logger.info(f"User logged in: {user.email}")
+    logger.info(f"User logged in: {user['email']}")
 
     return TokenResponse(
         access_token=access_token,
@@ -80,7 +78,7 @@ async def login(credentials: TokenRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(token_request: RefreshTokenRequest, db: Session = Depends(get_db)):
+async def refresh_token(token_request: RefreshTokenRequest, db = Depends(get_database)):
     """Refresh access token using refresh token"""
     token_data = decode_token(token_request.refresh_token)
     if not token_data:
@@ -90,16 +88,16 @@ async def refresh_token(token_request: RefreshTokenRequest, db: Session = Depend
         )
 
     # Verify user still exists and is active
-    user = db.query(User).filter(User.id == token_data.user_id).first()
-    if not user or not user.is_active:
+    user = await db.users.find_one({"_id": token_data.user_id})
+    if not user or not user.get("is_active", True):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User not found or inactive"
         )
 
     # Create new tokens
-    access_token = create_access_token(str(user.id), user.email, user.role)
-    refresh_token = create_refresh_token(str(user.id), user.email, user.role)
+    access_token = create_access_token(str(user["_id"]), user["email"], user["role"])
+    refresh_token = create_refresh_token(str(user["_id"]), user["email"], user["role"])
 
     return TokenResponse(
         access_token=access_token,

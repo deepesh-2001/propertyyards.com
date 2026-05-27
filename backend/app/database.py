@@ -38,3 +38,9 @@ async def get_database():
     """Dependency to get database"""
     return database
 
+
+# For backward compatibility with routers that still use get_db
+def get_db():
+    """Legacy dependency for backward compatibility - returns database"""
+    return database
+
