@@ -73,7 +73,7 @@ services:
       dockerfile: Dockerfile
     container_name: housing_frontend
     environment:
-      VITE_API_URL: http://localhost:8000
+      VITE_API_URL: https://propertyyards.com
     ports:
       - "5173:5173"
     depends_on:

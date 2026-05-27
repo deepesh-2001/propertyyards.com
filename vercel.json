@@ -2,14 +2,23 @@
   "version": 2,
   "builds": [
     {
-      "src": "my_package/api.py",
+      "src": "backend/app/main.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "backend/app/main.py"
+    },
+    {
       "src": "/(.*)",
-      "dest": "my_package/api.py"
+      "dest": "frontend/index.html"
     }
-  ]
+  ],
+  "env": {
+    "DATABASE_URL": "@database_url",
+    "REDIS_URL": "@redis_url",
+    "JWT_SECRET_KEY": "@jwt_secret_key"
+  }
 }
