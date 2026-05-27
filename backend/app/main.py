@@ -9,9 +9,10 @@ import logging
 import sys
 
 from app.config import settings
-from app.database import engine, Base
+from app.database import init_database, close_database
 from app.cache import init_cache, close_cache
 from app.routers import auth, users, properties, inquiries, admin
+from app import health, cron
 
 # Configure logging
 logging.basicConfig(
@@ -32,21 +33,26 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting Housing Platform API...")
 
-    # Create database tables
+    # Initialize database
     try:
-        Base.metadata.create_all(bind=engine)
-        logger.info("Database tables created/verified")
+        await init_database()
+        logger.info("Database initialized successfully")
     except Exception as e:
-        logger.error(f"Database creation error: {e}")
+        logger.error(f"Database initialization error: {e}")
 
     # Initialize cache
     await init_cache()
+
+    # Start cron job scheduler
+    cron.start_scheduler()
 
     yield
 
     # Shutdown
     logger.info("Shutting down Housing Platform API...")
+    cron.stop_scheduler()
     await close_cache()
+    await close_database()
 
 
 # Create FastAPI app
@@ -73,6 +79,7 @@ app.include_router(users.router)
 app.include_router(properties.router)
 app.include_router(inquiries.router)
 app.include_router(admin.router)
+app.include_router(health.router)
 
 
 # Root endpoint

@@ -1,37 +1,40 @@
 """
-Database setup and configuration
+Database setup and configuration for MongoDB
 """
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from motor.motor_asyncio import AsyncIOMotorClient
 from app.config import settings
+import logging
 
-# Create engine
-engine = create_engine(
-    settings.DATABASE_URL,
-    echo=settings.DATABASE_ECHO,
-    pool_pre_ping=True,
-    pool_size=20,
-    max_overflow=40
-)
+logger = logging.getLogger(__name__)
 
-# Create session factory
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine,
-    expire_on_commit=False
-)
-
-# Base class for models
-Base = declarative_base()
+# MongoDB client
+client: AsyncIOMotorClient = None
+database = None
 
 
-def get_db():
-    """Dependency to get database session"""
-    db = SessionLocal()
+async def init_database():
+    """Initialize MongoDB connection"""
+    global client, database
     try:
-        yield db
-    finally:
-        db.close()
+        client = AsyncIOMotorClient(settings.DATABASE_URL)
+        database = client.get_database()
+        # Test connection
+        await client.admin.command('ping')
+        logger.info("MongoDB connected successfully")
+    except Exception as e:
+        logger.error(f"MongoDB connection error: {e}")
+        raise
+
+
+async def close_database():
+    """Close MongoDB connection"""
+    global client
+    if client:
+        client.close()
+        logger.info("MongoDB connection closed")
+
+
+async def get_database():
+    """Dependency to get database"""
+    return database
 
