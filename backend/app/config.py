@@ -7,12 +7,15 @@ from typing import Optional
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "postgresql://user:password@localhost/housing_db"
+    DATABASE_URL: str = "mongodb://localhost:27017/housing_db"
     DATABASE_ECHO: bool = False
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379"
     CACHE_TTL: int = 3600  # 1 hour
+
+    # Firecrawl
+    FIRECRAWL_API_KEY: str = ""
 
     # JWT
     JWT_SECRET_KEY: str = "your-secret-key-change-in-production"

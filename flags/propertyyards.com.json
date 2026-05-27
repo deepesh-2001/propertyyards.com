@@ -1,0 +1,40 @@
+{
+  "domain": "propertyyards.com",
+  "environment": "production",
+  "features": {
+    "user_registration": true,
+    "property_listing": true,
+    "property_search": true,
+    "wishlist": true,
+    "inquiries": true,
+    "admin_dashboard": true,
+    "analytics": true,
+    "cache_enabled": true,
+    "rate_limiting": true,
+    "email_notifications": false,
+    "sms_notifications": false,
+    "social_login": false,
+    "payment_gateway": false,
+    "virtual_tours": false,
+    "ai_recommendations": false
+  },
+  "deployment": {
+    "cdn_enabled": true,
+    "ssl_enabled": true,
+    "monitoring_enabled": true,
+    "backup_enabled": true,
+    "auto_scaling": false
+  },
+  "limits": {
+    "max_properties_per_user": 50,
+    "max_images_per_property": 20,
+    "max_inquiries_per_day": 10,
+    "api_rate_limit_per_minute": 100,
+    "file_upload_max_size_mb": 10
+  },
+  "maintenance": {
+    "enabled": false,
+    "message": "Site under maintenance. Please check back soon.",
+    "allowed_ips": []
+  }
+}
