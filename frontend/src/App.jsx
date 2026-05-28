@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { useAuthStore } from './stores/authStore'
 import { Login, Register } from './components/Auth/Auth'
 import { PropertyList, PropertySearch } from './components/Properties/Properties'
+import { Whiteboard } from './components/Whiteboard/Whiteboard'
+import { Structure3D } from './components/Structure3D/Structure3D'
 import './App.css'
 
 function ProtectedRoute({ children, isAuthenticated }) {
@@ -44,6 +46,22 @@ function App() {
             element={
               <ProtectedRoute isAuthenticated={isAuthenticated}>
                 <PropertySearch />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/whiteboard"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <Whiteboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/3d-structure"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <Structure3D />
               </ProtectedRoute>
             }
           />
@@ -89,6 +107,12 @@ function Navigation({ user }) {
           </a>
           <a href="/search" className="nav-link">
             Search
+          </a>
+          <a href="/whiteboard" className="nav-link">
+            Whiteboard
+          </a>
+          <a href="/3d-structure" className="nav-link">
+            3D Structure
           </a>
           {user && (
             <div className="user-info">
