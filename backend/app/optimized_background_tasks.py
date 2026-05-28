@@ -239,7 +239,7 @@ class OptimizedBackgroundScheduler:
                     {"description": ""},
                     {"ai_enhanced": {"$ne": True}}
                 ]}
-            }).limit(10).to_list(length=10)
+            ).limit(10).to_list(length=10)
 
             for prop in properties:
                 # Generate beautiful description
@@ -325,7 +325,7 @@ Don't miss this opportunity to own your dream home!
                     {"image_url": {"$exists": False}},
                     {"ai_image_generated": {"$ne": True}}
                 ]}
-            }).limit(3).to_list(length=3)
+            ).limit(3).to_list(length=3)
 
             for prop in props:
                 # Generate AI visualization

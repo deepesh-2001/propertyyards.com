@@ -119,9 +119,9 @@ class FeedbackManager:
     
     async def get_feedback_analytics(
         self,
+        database,
         start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        database
+        end_date: Optional[datetime] = None
     ) -> Dict[str, Any]:
         """Get feedback analytics"""
         try:
@@ -338,9 +338,9 @@ class ReviewManager:
     async def get_property_reviews(
         self,
         property_id: str,
+        database,
         min_rating: Optional[int] = None,
-        verified_only: bool = False,
-        database
+        verified_only: bool = False
     ) -> List[Dict[str, Any]]:
         """Get reviews for a property"""
         try:

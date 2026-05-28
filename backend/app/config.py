@@ -259,6 +259,21 @@ class Settings(BaseSettings):
     DEFAULT_TIMEZONE: str = "UTC"
     DEFAULT_REGION: str = "na"  # North America
 
+    # Cab Booking APIs
+    OLA_API_KEY: str = ""
+    UBER_SERVER_TOKEN: str = ""
+    RAPIDO_API_KEY: str = ""
+
+    # Train Booking APIs (via RapidAPI)
+    RAILYATRI_API_KEY: str = ""
+    IRCTC_RAPIDAPI_KEY: str = ""
+    CONFIRMTKT_API_KEY: str = ""
+
+    # Hotel Booking APIs (via RapidAPI)
+    BOOKING_COM_API_KEY: str = ""
+    AGODA_API_KEY: str = ""
+    TRIPADVISOR_API_KEY: str = ""
+
     # Currency Exchange API
     EXCHANGE_RATE_API_KEY: str = ""
     EXCHANGE_RATE_UPDATE_INTERVAL: int = 3600  # 1 hour

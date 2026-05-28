@@ -157,3 +157,22 @@ async def get_active_sessions(user_id: str) -> list:
     """Get all active sessions for a user"""
     return await session_manager.get_user_sessions(user_id)
 
+
+def get_current_user(authorization: str = None) -> dict:
+    """Extract and validate current user from Authorization header (Bearer token)."""
+    from fastapi import HTTPException
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        token = authorization.split(" ")[1]
+        token_data = decode_token(token)
+        if token_data:
+            return {
+                "user_id": token_data.user_id,
+                "email": token_data.email,
+                "role": token_data.role
+            }
+    except Exception:
+        pass
+    raise HTTPException(status_code=401, detail="Invalid token")
+

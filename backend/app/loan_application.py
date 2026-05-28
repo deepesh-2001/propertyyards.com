@@ -165,10 +165,10 @@ class LoanApplicationManager:
         self,
         loan_application_id: str,
         approved_by: str,
+        database,
         approval_amount: Optional[float] = None,
         interest_rate: Optional[float] = None,
-        notes: Optional[str] = None,
-        database
+        notes: Optional[str] = None
     ) -> Dict[str, Any]:
         """Approve a loan application"""
         try:

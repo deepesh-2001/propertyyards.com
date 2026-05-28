@@ -10,7 +10,7 @@ import logging
 import sys
 
 from app.config import settings
-from app.routers import auth, users, properties, inquiries, admin, crm, referral, access, loan_calculator, contact, notifications, chatbot, brokers, reports, monitoring, recruitment, payments, self_healing, salary, commission, prediction, feedback, credit_card, reimbursement, claims, tax, onboarding, scraper, property_onboarding, feature_flags, whiteboard, analytics, cache_management, properties_cached, realtime, admin_portal, social_media, telegram, news, operations, architecture, ai_costs, ai_seo, comparison, cashback, deployment, tickets, rewards, insurance
+from app.routers import auth, users, properties, inquiries, admin, crm, referral, access, loan_calculator, contact, notifications, chatbot, brokers, reports, monitoring, recruitment, payments, self_healing, salary, commission, prediction, feedback, credit_card, reimbursement, claims, tax, onboarding, scraper, property_onboarding, feature_flags, whiteboard, analytics, cache_management, properties_cached, realtime, admin_portal, social_media, telegram, news, operations, architecture, ai_costs, ai_seo, comparison, cashback, deployment, tickets, rewards, insurance, cabs, trains, hotels
 from app import health, cron
 from app.access import AccessControl
 from app.security import setup_security_middleware
@@ -18,13 +18,18 @@ from app.https_middleware import enforce_https
 from app.unified_startup import initialize_application, shutdown_application, get_application_health
 
 # Configure logging
+_log_handlers = [logging.StreamHandler(sys.stdout)]
+try:
+    import os
+    os.makedirs('/app/logs', exist_ok=True)
+    _log_handlers.append(logging.FileHandler('/app/logs/app.log'))
+except Exception:
+    pass  # Read-only filesystem or no permission — log to stdout only
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler('app.log')
-    ]
+    handlers=_log_handlers
 )
 logger = logging.getLogger(__name__)
 
@@ -109,10 +114,6 @@ async def performance_monitor(request, call_next):
 
     start = time.perf_counter()
 
-    # Check for duplicate requests
-    from app.cache_pipeline import request_deduplicator
-
-    request_key = f"{request.method}:{request.url.path}:{hash(str(request.query_params))}"
 
     response = await call_next(request)
 
@@ -177,6 +178,9 @@ app.include_router(cashback.router)
 app.include_router(deployment.router)
 app.include_router(tickets.router)
 app.include_router(rewards.router)
+app.include_router(cabs.router)
+app.include_router(trains.router)
+app.include_router(hotels.router)
 app.include_router(health.router)
 
 # Setup security middleware

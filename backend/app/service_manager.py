@@ -72,6 +72,10 @@ class ServiceManager:
                 ("rewards", self._init_rewards, []),
                 ("ticket_booking", self._init_ticket_booking, []),
                 ("deployment", self._init_deployment, []),
+                ("travel_leads", self._init_travel_leads, []),
+                ("cab_booking", self._init_cab_booking, ["settings"]),
+                ("train_booking", self._init_train_booking, ["settings"]),
+                ("hotel_booking", self._init_hotel_booking, ["settings"]),
                 ("idle_processor", self._init_idle_processor, ["all"]),
             ]
 
@@ -333,6 +337,45 @@ class ServiceManager:
         # Note: region is set per-user, this just initializes the manager
 
         return region_manager
+
+    async def _init_travel_leads(self, database, settings):
+        """Initialize travel lead service"""
+        from app.travel_lead_service import travel_lead_service
+        logger.info("Travel Lead Service initialized")
+        return travel_lead_service
+
+    async def _init_cab_booking(self, database, settings):
+        """Initialize cab booking service"""
+        from app.cab_booking_service import cab_booking_service
+        await cab_booking_service.initialize(
+            ola_api_key=getattr(settings, 'OLA_API_KEY', None) or None,
+            uber_server_token=getattr(settings, 'UBER_SERVER_TOKEN', None) or None,
+            rapido_api_key=getattr(settings, 'RAPIDO_API_KEY', None) or None
+        )
+        logger.info("Cab Booking Service initialized")
+        return cab_booking_service
+
+    async def _init_train_booking(self, database, settings):
+        """Initialize train booking service"""
+        from app.train_booking_service import train_booking_service
+        await train_booking_service.initialize(
+            railyatri_key=getattr(settings, 'RAILYATRI_API_KEY', None) or None,
+            irctc_rapidapi_key=getattr(settings, 'IRCTC_RAPIDAPI_KEY', None) or None,
+            confirmtkt_key=getattr(settings, 'CONFIRMTKT_API_KEY', None) or None
+        )
+        logger.info("Train Booking Service initialized")
+        return train_booking_service
+
+    async def _init_hotel_booking(self, database, settings):
+        """Initialize hotel booking service"""
+        from app.hotel_booking_service import hotel_booking_service
+        await hotel_booking_service.initialize(
+            booking_com_key=getattr(settings, 'BOOKING_COM_API_KEY', None) or None,
+            agoda_key=getattr(settings, 'AGODA_API_KEY', None) or None,
+            tripadvisor_key=getattr(settings, 'TRIPADVISOR_API_KEY', None) or None
+        )
+        logger.info("Hotel Booking Service initialized")
+        return hotel_booking_service
 
     async def _init_flight_comparison(self, database, settings):
         """Initialize flight comparison service"""

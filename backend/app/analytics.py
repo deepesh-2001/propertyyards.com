@@ -96,173 +96,169 @@ class AnalyticsManager:
         sold_properties = await database.properties.count_documents({**query, "status": "sold"})
         pending_properties = await database.properties.count_documents({**query, "status": "pending"})
 
-            # By type
-            type_pipeline = [
-                {"$match": query},
-                {"$group": {"_id": "$property_type", "count": {"$sum": 1}}}
-            ]
-            type_result = await database.properties.aggregate(type_pipeline).to_list(length=20)
-            by_type = {r["_id"]: r["count"] for r in type_result}
+        # By type
+        type_pipeline = [
+            {"$match": query},
+            {"$group": {"_id": "$property_type", "count": {"$sum": 1}}}
+        ]
+        type_result = await database.properties.aggregate(type_pipeline).to_list(length=20)
+        by_type = {r["_id"]: r["count"] for r in type_result}
 
-            # By city
-            city_pipeline = [
-                {"$match": query},
-                {"$group": {"_id": "$city", "count": {"$sum": 1}}},
-                {"$sort": {"count": -1}},
-                {"$limit": 20}
-            ]
-            city_result = await database.properties.aggregate(city_pipeline).to_list(length=20)
-            by_city = {r["_id"]: r["count"] for r in city_result}
+        # By city
+        city_pipeline = [
+            {"$match": query},
+            {"$group": {"_id": "$city", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": 20}
+        ]
+        city_result = await database.properties.aggregate(city_pipeline).to_list(length=20)
+        by_city = {r["_id"]: r["count"] for r in city_result}
 
-            # By price range
-            price_ranges = {
-                "0-10L": 0, "10L-25L": 0, "25L-50L": 0, "50L-1Cr": 0, "1Cr-2Cr": 0, "2Cr+": 0
-            }
-            price_pipeline = [
-                {"$match": query},
-                {"$project": {"price": 1}}
-            ]
-            properties_with_price = await database.properties.aggregate(price_pipeline).to_list(length=10000)
-            for prop in properties_with_price:
-                price = prop.get("price", 0)
-                if price < 1000000:
-                    price_ranges["0-10L"] += 1
-                elif price < 2500000:
-                    price_ranges["10L-25L"] += 1
-                elif price < 5000000:
-                    price_ranges["25L-50L"] += 1
-                elif price < 10000000:
-                    price_ranges["50L-1Cr"] += 1
-                elif price < 20000000:
-                    price_ranges["1Cr-2Cr"] += 1
-                else:
-                    price_ranges["2Cr+"] += 1
-
-            # Average and median price
-            avg_price_pipeline = [
-                {"$match": query},
-                {"$group": {"_id": None, "avg_price": {"$avg": "$price"}}}
-            ]
-            avg_result = await database.properties.aggregate(avg_price_pipeline).to_list(length=1)
-            average_price = avg_result[0]["avg_price"] if avg_result else 0
-
-            # Median price (approximate)
-            sorted_pipeline = [
-                {"$match": query},
-                {"$sort": {"price": 1}},
-                {"$skip": max(0, total_properties // 2 - 1)},
-                {"$limit": 2}
-            ]
-            median_result = await database.properties.aggregate(sorted_pipeline).to_list(length=2)
-            if median_result:
-                median_price = sum(r.get("price", 0) for r in median_result) / len(median_result)
+        # By price range
+        price_ranges = {
+            "0-10L": 0, "10L-25L": 0, "25L-50L": 0, "50L-1Cr": 0, "1Cr-2Cr": 0, "2Cr+": 0
+        }
+        price_pipeline = [
+            {"$match": query},
+            {"$project": {"price": 1}}
+        ]
+        properties_with_price = await database.properties.aggregate(price_pipeline).to_list(length=10000)
+        for prop in properties_with_price:
+            price = prop.get("price", 0)
+            if price < 1000000:
+                price_ranges["0-10L"] += 1
+            elif price < 2500000:
+                price_ranges["10L-25L"] += 1
+            elif price < 5000000:
+                price_ranges["25L-50L"] += 1
+            elif price < 10000000:
+                price_ranges["50L-1Cr"] += 1
+            elif price < 20000000:
+                price_ranges["1Cr-2Cr"] += 1
             else:
-                median_price = 0
+                price_ranges["2Cr+"] += 1
 
-            # Monthly listings trend
-            monthly_pipeline = [
-                {"$match": query},
-                {
-                    "$group": {
-                        "_id": {
-                            "year": {"$year": "$created_at"},
-                            "month": {"$month": "$created_at"}
-                        },
-                        "count": {"$sum": 1}
-                    }
-                },
-                {"$sort": {"_id.year": -1, "_id.month": -1}},
-                {"$limit": 12}
-            ]
-            monthly_result = await database.properties.aggregate(monthly_pipeline).to_list(length=12)
-            monthly_listings = [
-                {
-                    "year": r["_id"]["year"],
-                    "month": r["_id"]["month"],
-                    "count": r["count"]
+        # Average and median price
+        avg_price_pipeline = [
+            {"$match": query},
+            {"$group": {"_id": None, "avg_price": {"$avg": "$price"}}}
+        ]
+        avg_result = await database.properties.aggregate(avg_price_pipeline).to_list(length=1)
+        average_price = avg_result[0]["avg_price"] if avg_result else 0
+
+        # Median price (approximate)
+        sorted_pipeline = [
+            {"$match": query},
+            {"$sort": {"price": 1}},
+            {"$skip": max(0, total_properties // 2 - 1)},
+            {"$limit": 2}
+        ]
+        median_result = await database.properties.aggregate(sorted_pipeline).to_list(length=2)
+        if median_result:
+            median_price = sum(r.get("price", 0) for r in median_result) / len(median_result)
+        else:
+            median_price = 0
+
+        # Monthly listings trend
+        monthly_pipeline = [
+            {"$match": query},
+            {
+                "$group": {
+                    "_id": {
+                        "year": {"$year": "$created_at"},
+                        "month": {"$month": "$created_at"}
+                    },
+                    "count": {"$sum": 1}
                 }
-                for r in monthly_result
-            ]
-
-            # Top cities
-            top_cities = [
-                {"city": city, "count": count}
-                for city, count in sorted(by_city.items(), key=lambda x: x[1], reverse=True)[:10]
-            ]
-
-            # Conversion rate (sold / total)
-            conversion_rate = (sold_properties / total_properties * 100) if total_properties > 0 else 0
-
-            # Average days to sell
-            sold_pipeline = [
-                {"$match": {**query, "status": "sold"}},
-                {
-                    "$project": {
-                        "days_to_sell": {
-                            "$divide": [
-                                {"$subtract": ["$updated_at", "$created_at"]},
-                                86400000  # milliseconds to days
-                            ]
-                        }
-                    }
-                }
-            ]
-            sold_properties_data = await database.properties.aggregate(sold_pipeline).to_list(length=1000)
-            if sold_properties_data:
-                avg_days_to_sell = sum(p.get("days_to_sell", 0) for p in sold_properties_data) / len(sold_properties_data)
-            else:
-                avg_days_to_sell = 0
-
-            # Price trend
-            price_trend_pipeline = [
-                {"$match": query},
-                {
-                    "$group": {
-                        "_id": {
-                            "year": {"$year": "$created_at"},
-                            "month": {"$month": "$created_at"}
-                        },
-                        "avg_price": {"$avg": "$price"}
-                    }
-                },
-                {"$sort": {"_id.year": -1, "_id.month": -1}},
-                {"$limit": 12}
-            ]
-            price_trend_result = await database.properties.aggregate(price_trend_pipeline).to_list(length=12)
-            price_trend = [
-                {
-                    "year": r["_id"]["year"],
-                    "month": r["_id"]["month"],
-                    "avg_price": r["avg_price"]
-                }
-                for r in price_trend_result
-            ]
-
-            result = {
-                "total_properties": total_properties,
-                "active_properties": active_properties,
-                "sold_properties": sold_properties,
-                "pending_properties": pending_properties,
-                "by_type": by_type,
-                "by_city": by_city,
-                "by_price_range": price_ranges,
-                "average_price": average_price,
-                "median_price": median_price,
-                "price_trend": price_trend,
-                "monthly_listings": monthly_listings,
-                "top_cities": top_cities,
-                "conversion_rate": conversion_rate,
-                "average_days_to_sell": avg_days_to_sell
+            },
+            {"$sort": {"_id.year": -1, "_id.month": -1}},
+            {"$limit": 12}
+        ]
+        monthly_result = await database.properties.aggregate(monthly_pipeline).to_list(length=12)
+        monthly_listings = [
+            {
+                "year": r["_id"]["year"],
+                "month": r["_id"]["month"],
+                "count": r["count"]
             }
+            for r in monthly_result
+        ]
 
-            # Cache the result
-            await set_in_cache(cache_key, result, ttl=self.cache_ttl)
+        # Top cities
+        top_cities = [
+            {"city": city, "count": count}
+            for city, count in sorted(by_city.items(), key=lambda x: x[1], reverse=True)[:10]
+        ]
 
-            return result
+        # Conversion rate (sold / total)
+        conversion_rate = (sold_properties / total_properties * 100) if total_properties > 0 else 0
 
-        except Exception as e:
-            logger.error(f"Property analytics error: {e}")
-            raise
+        # Average days to sell
+        sold_pipeline = [
+            {"$match": {**query, "status": "sold"}},
+            {
+                "$project": {
+                    "days_to_sell": {
+                        "$divide": [
+                            {"$subtract": ["$updated_at", "$created_at"]},
+                            86400000  # milliseconds to days
+                        ]
+                    }
+                }
+            }
+        ]
+        sold_properties_data = await database.properties.aggregate(sold_pipeline).to_list(length=1000)
+        if sold_properties_data:
+            avg_days_to_sell = sum(p.get("days_to_sell", 0) for p in sold_properties_data) / len(sold_properties_data)
+        else:
+            avg_days_to_sell = 0
+
+        # Price trend
+        price_trend_pipeline = [
+            {"$match": query},
+            {
+                "$group": {
+                    "_id": {
+                        "year": {"$year": "$created_at"},
+                        "month": {"$month": "$created_at"}
+                    },
+                    "avg_price": {"$avg": "$price"}
+                }
+            },
+            {"$sort": {"_id.year": -1, "_id.month": -1}},
+            {"$limit": 12}
+        ]
+        price_trend_result = await database.properties.aggregate(price_trend_pipeline).to_list(length=12)
+        price_trend = [
+            {
+                "year": r["_id"]["year"],
+                "month": r["_id"]["month"],
+                "avg_price": r["avg_price"]
+            }
+            for r in price_trend_result
+        ]
+
+        result = {
+            "total_properties": total_properties,
+            "active_properties": active_properties,
+            "sold_properties": sold_properties,
+            "pending_properties": pending_properties,
+            "by_type": by_type,
+            "by_city": by_city,
+            "by_price_range": price_ranges,
+            "average_price": average_price,
+            "median_price": median_price,
+            "price_trend": price_trend,
+            "monthly_listings": monthly_listings,
+            "top_cities": top_cities,
+            "conversion_rate": conversion_rate,
+            "average_days_to_sell": avg_days_to_sell
+        }
+
+        # Cache the result
+        await set_in_cache(cache_key, result, ttl=self.cache_ttl)
+
+        return result
 
     async def get_user_analytics(
         self,

@@ -31,9 +31,9 @@ class AttendanceManager:
     async def check_in(
         self,
         user_id: str,
+        database,
         location: Optional[str] = None,
-        device_id: Optional[str] = None,
-        database
+        device_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Record employee check-in"""
         try:
@@ -86,9 +86,9 @@ class AttendanceManager:
     async def check_out(
         self,
         user_id: str,
+        database,
         location: Optional[str] = None,
-        device_id: Optional[str] = None,
-        database
+        device_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Record employee check-out"""
         try:
@@ -272,11 +272,11 @@ class TimingManager:
         self,
         user_id: str,
         activity: str,
+        database,
         project_id: Optional[str] = None,
         task_id: Optional[str] = None,
         description: Optional[str] = None,
-        is_billable: bool = True,
-        database
+        is_billable: bool = True
     ) -> Dict[str, Any]:
         """Start a timing record"""
         try:

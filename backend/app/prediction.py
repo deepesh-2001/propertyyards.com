@@ -250,8 +250,8 @@ class PropertyPredictor:
         self,
         property_id: str,
         historical_data: List[Dict[str, Any]],
-        timeframe: str = "6 months",
-        database
+        database,
+        timeframe: str = "6 months"
     ) -> Dict[str, Any]:
         """Predict property value for a specific property"""
         try:
@@ -353,8 +353,8 @@ class MarketPredictor:
         self,
         location: str,
         historical_data: List[Dict[str, Any]],
-        timeframe: str = "6 months",
-        database
+        database,
+        timeframe: str = "6 months"
     ) -> Dict[str, Any]:
         """Predict market trend for a location"""
         try:
@@ -451,8 +451,8 @@ class SalesForecaster:
         self,
         period: str,
         historical_sales: List[Dict[str, Any]],
-        forecast_months: int = 3,
-        database
+        database,
+        forecast_months: int = 3
     ) -> Dict[str, Any]:
         """Forecast sales for a period"""
         try:

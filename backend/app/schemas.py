@@ -2175,6 +2175,7 @@ class RewardCategory(str, Enum):
     HEALTHCARE = "healthcare"
     ONLINE = "online"
     INTERNATIONAL = "international"
+    RENTAL = "rental"
 
 
 class CreditCardCreate(BaseModel):

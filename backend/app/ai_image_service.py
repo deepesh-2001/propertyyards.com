@@ -108,13 +108,17 @@ class AIImageGenerator:
         trend = market_data.get('trend', 'growing')
 
         if chart_type == 'trend':
-            return f"Beautiful infographic showing real estate market {trend} in {city}, "
-                   f"modern data visualization, upward trending graph, property icons, "
-                   f"professional business graphic, clean design, blue and green colors"
+            return (
+                f"Beautiful infographic showing real estate market {trend} in {city}, "
+                f"modern data visualization, upward trending graph, property icons, "
+                f"professional business graphic, clean design, blue and green colors"
+            )
 
         elif chart_type == 'comparison':
-            return f"Real estate price comparison chart for different neighborhoods in {city}, "
-                   f"colorful bar chart style, modern infographic design, professional"
+            return (
+                f"Real estate price comparison chart for different neighborhoods in {city}, "
+                f"colorful bar chart style, modern infographic design, professional"
+            )
 
         return f"Real estate market data visualization for {city}, modern infographic style"
 
@@ -124,10 +128,12 @@ class AIImageGenerator:
         year = prediction_data.get('year', 2030)
         growth = prediction_data.get('growth_rate', 15)
 
-        return f"Futuristic {property_type} complex in {location} year {year}, "
-               f"showing {growth}% growth and development, modern architecture, "
-               f"smart city features, sustainable design, aerial view, "
-               f"architectural visualization, vibrant colors"
+        return (
+            f"Futuristic {property_type} complex in {location} year {year}, "
+            f"showing {growth}% growth and development, modern architecture, "
+            f"smart city features, sustainable design, aerial view, "
+            f"architectural visualization, vibrant colors"
+        )
 
     def _build_social_prompt(self, content_type: str, text: str, theme: str) -> str:
         """Build prompt for social media"""

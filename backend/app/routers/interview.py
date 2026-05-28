@@ -399,4 +399,4 @@ async def get_available_slots(
         )
         return {"slots": slots}
     except Exception as e:
-        raise HTTPException(status_code=500, detail(str(e))
+        raise HTTPException(status_code=500, detail=str(e))

@@ -387,7 +387,7 @@ class AccessControl:
         
         resource_ids = []
         for acl in acls:
-            if access_hierarchy[acl["access_level"]] >= access_hierarchy[required_access):
+            if access_hierarchy[acl["access_level"]] >= access_hierarchy[required_access]:
                 resource_ids.append(acl["resource_id"])
         
         return resource_ids

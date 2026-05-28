@@ -119,7 +119,7 @@ class LeaveManager:
             logger.error(f"Leave balance check error: {e}")
             raise
     
-    async def approve_leave_request(self, leave_request_id: str, approved_by: str, notes: Optional[str] = None, database) -> Dict[str, Any]:
+    async def approve_leave_request(self, leave_request_id: str, approved_by: str, database, notes: Optional[str] = None) -> Dict[str, Any]:
         """Approve a leave request with cache invalidation"""
         try:
             leave_request = await database.leave_requests.find_one({"_id": leave_request_id})
