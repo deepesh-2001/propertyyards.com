@@ -173,6 +173,38 @@ class Settings(BaseSettings):
     DEVICE_FINGERPRINTING: bool = True
     IP_WHITELIST_ENABLED: bool = False
 
+    # Image Upload Configuration
+    IMAGE_STORAGE_TYPE: str = "local"  # local, s3, cloudinary
+    IMAGE_UPLOAD_DIR: str = "uploads/images"
+    IMAGE_MAX_FILE_SIZE_MB: float = 10.0
+    IMAGE_ALLOWED_FORMATS: list = ["jpg", "jpeg", "png", "webp", "gif"]
+    IMAGE_MAX_WIDTH: int = 1920
+    IMAGE_MAX_HEIGHT: int = 1080
+    IMAGE_THUMBNAIL_WIDTH: int = 150
+    IMAGE_THUMBNAIL_HEIGHT: int = 150
+    IMAGE_MEDIUM_WIDTH: int = 800
+    IMAGE_MEDIUM_HEIGHT: int = 600
+    IMAGE_QUALITY: int = 85
+    IMAGE_THUMBNAIL_QUALITY: int = 70
+    IMAGE_MEDIUM_QUALITY: int = 80
+    IMAGE_ENABLE_WEBP: bool = True
+    IMAGE_ENABLE_AVIF: bool = False
+    IMAGE_CACHE_TTL: int = 86400  # 24 hours
+    IMAGE CDN_URL: str = ""
+    
+    # AWS S3 Configuration
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
+    AWS_REGION: str = "us-east-1"
+    AWS_S3_BUCKET: str = ""
+    AWS_S3_BUCKET_PREFIX: str = "images/"
+    
+    # Cloudinary Configuration
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
+    CLOUDINARY_UPLOAD_FOLDER: str = "housing_platform"
+
     class Config:
         env_file = ".env"
         case_sensitive = True

@@ -5,6 +5,7 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
+from typing import Dict, Any
 
 
 # ========== User Schemas ==========
@@ -3396,13 +3397,79 @@ class SecurePaymentResponse(BaseModel):
     amount: float
     currency: str
     risk_score: float
-    risk_level: FraudRiskLevel
-    kyc_verified: bool
-    pan_verified: bool
-    two_factor_verified: bool
-    requires_additional_verification: bool
-    verification_required: List[str]
-    blocked: bool
-    block_reason: Optional[str]
+
+
+# ========== Image Upload Schemas ==========
+class ImageCategory(str, Enum):
+    PROPERTY = "property"
+    PROFILE = "profile"
+    DOCUMENT = "document"
+    BROKER = "broker"
+    GENERAL = "general"
+
+
+class ImageUploadResponse(BaseModel):
+    id: str
+    url: str
+    thumbnail_url: Optional[str] = None
+    medium_url: Optional[str] = None
+    original_filename: str
+    file_size: int
+    width: int
+    height: int
+    format: str
+    category: ImageCategory
+    uploaded_by: str
     created_at: datetime
+
+
+class ImageUploadRequest(BaseModel):
+    category: ImageCategory = ImageCategory.PROPERTY
+    property_id: Optional[str] = None
+    user_id: Optional[str] = None
+    alt_text: Optional[str] = None
+
+
+class BatchImageUploadResponse(BaseModel):
+    successful: List[ImageUploadResponse]
+    failed: List[Dict[str, Any]]
+    total_uploaded: int
+    total_failed: int
+
+
+class ImageDeleteResponse(BaseModel):
+    success: bool
+    message: str
+    image_id: str
+
+
+class ImageRenderRequest(BaseModel):
+    image_id: str
+    width: Optional[int] = None
+    height: Optional[int] = None
+    quality: int = Field(85, ge=1, le=100)
+    format: str = "webp"
+
+
+class ImageOptimizationSettings(BaseModel):
+    max_width: int = 1920
+    max_height: int = 1080
+    thumbnail_width: int = 150
+    thumbnail_height: int = 150
+    medium_width: int = 800
+    medium_height: int = 600
+    quality: int = 85
+    thumbnail_quality: int = 70
+    medium_quality: int = 80
+    enable_webp: bool = True
+    enable_avif: bool = False
+    max_file_size_mb: float = 10.0
+    allowed_formats: List[str] = ["jpg", "jpeg", "png", "webp", "gif"]
+
+
+class ImageStats(BaseModel):
+    total_images: int
+    total_size_bytes: int
+    by_category: Dict[str, int]
+    recent_uploads: List[ImageUploadResponse]
 
