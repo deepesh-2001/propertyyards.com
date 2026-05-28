@@ -1,8 +1,34 @@
-# Ignore backend files to prevent Python detection
-../backend
-../microservices
-../tests
+# Ignore all parent directories to prevent Python detection
+../**
+
+# Ignore Python files
 *.py
-requirements.txt
+*.pyx
+*.pyi
+requirements*.txt
+setup.py
+setup.cfg
 pyproject.toml
 pytest.ini
+tox.ini
+Pipfile
+Pipfile.lock
+poetry.lock
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Ignore backend and microservices directories
+backend/
+microservices/
+tests/
+
+# Ignore any Python-related configuration
+.python-version
+.env.python
+.python-version

@@ -1,7 +1,14 @@
 [tool.vercel]
-# Disable Python detection for frontend-only deployment
+# Explicitly disable Python detection for frontend-only deployment
 framework = "none"
+entrypoint = ""
 
 [build-system]
 requires = []
 build-backend = ""
+
+# Prevent Python package detection
+[project]
+name = "frontend-only"
+version = "0.0.0"
+description = "Frontend only - no Python"
