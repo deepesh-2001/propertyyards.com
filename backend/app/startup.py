@@ -9,6 +9,7 @@ from app.background_tasks import background_processor, analytics_processor
 from app.persistent_cache import persistent_cache
 from app.cache import init_cache
 from app.database import init_database, get_database
+from app.realtime_analytics import realtime_collector
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,10 @@ async def initialize_system():
 
         # Start background task processor
         await background_processor.start()
+
+        # Start real-time analytics collector
+        await realtime_collector.start()
+        logger.info("Real-time analytics collector started")
 
         # Schedule periodic tasks
         await schedule_periodic_tasks(database)
@@ -114,6 +119,10 @@ async def shutdown_system():
     try:
         # Stop background processor
         await background_processor.stop()
+
+        # Stop real-time analytics collector
+        await realtime_collector.stop()
+        logger.info("Real-time analytics collector stopped")
 
         # Close cache
         from app.cache import close_cache

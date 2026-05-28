@@ -11,7 +11,7 @@ import sys
 from app.config import settings
 from app.database import init_database, close_database
 from app.cache import init_cache, close_cache
-from app.routers import auth, users, properties, inquiries, admin, crm, referral, access, loan_calculator, contact, notifications, chatbot, brokers, reports, monitoring, recruitment, payments, self_healing, salary, commission, prediction, feedback, credit_card, reimbursement, claims, tax, onboarding, scraper, property_onboarding, feature_flags, whiteboard, analytics, cache_management, properties_cached
+from app.routers import auth, users, properties, inquiries, admin, crm, referral, access, loan_calculator, contact, notifications, chatbot, brokers, reports, monitoring, recruitment, payments, self_healing, salary, commission, prediction, feedback, credit_card, reimbursement, claims, tax, onboarding, scraper, property_onboarding, feature_flags, whiteboard, analytics, cache_management, properties_cached, realtime
 from app import health, cron
 from app.access import AccessControl
 from app.security import setup_security_middleware
@@ -162,6 +162,7 @@ app.include_router(feature_flags.router)
 app.include_router(whiteboard.router)
 app.include_router(analytics.router)
 app.include_router(cache_management.router)
+app.include_router(realtime.router)
 app.include_router(health.router)
 
 # Setup security middleware
