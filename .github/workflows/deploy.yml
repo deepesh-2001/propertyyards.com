@@ -81,7 +81,11 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    # Only run EKS deploy when AWS creds are configured.
+    # Set repo secret DEPLOY_TO_EKS=true (and the AWS_* secrets) to enable.
+    if: |
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') &&
+      vars.DEPLOY_TO_EKS == 'true'
     environment: production
 
     steps:
@@ -155,7 +159,8 @@ jobs:
   notify:
     needs: [test, build-and-push, deploy]
     runs-on: ubuntu-latest
-    if: always()
+    # Only notify if Slack webhook is configured, and don't fail when upstream jobs were skipped.
+    if: always() && vars.NOTIFY_SLACK == 'true'
 
     steps:
       - name: Notify Slack
@@ -170,4 +175,3 @@ jobs:
             Author: ${{ github.actor }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        if: always()
