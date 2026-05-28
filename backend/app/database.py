@@ -28,28 +28,34 @@ async def init_database():
             connectTimeoutMS=settings.CONNECTION_POOL_TIMEOUT * 1000,
             serverSelectionTimeoutMS=5000,
             retryWrites=True,
-            w="majority"
+            w="majority",
+            retryReads=True,
+            socketTimeoutMS=30000,
+            heartbeatFrequencyMS=10000
         )
         database = client.get_database()
-        
+
         # Test connection
         await client.admin.command('ping')
         logger.info(f"MongoDB connected successfully with connection pool (max: {settings.MAX_DB_CONNECTIONS}, min: {settings.MIN_DB_CONNECTIONS})")
-        
+
         # Initialize read replica if configured
         if hasattr(settings, 'READ_REPLICA_URL') and settings.READ_REPLICA_URL:
             read_replica_client = AsyncIOMotorClient(
                 settings.READ_REPLICA_URL,
                 maxPoolSize=settings.MAX_DB_CONNECTIONS // 2,
                 minPoolSize=settings.MIN_DB_CONNECTIONS // 2,
-                readPreference="secondary"
+                readPreference="secondaryPreferred",
+                retryReads=True,
+                socketTimeoutMS=30000,
+                heartbeatFrequencyMS=10000
             )
             read_replica_database = read_replica_client.get_database()
             logger.info("MongoDB read replica connected successfully")
-        
+
         # Create indexes for optimization
         await create_indexes()
-        
+
     except Exception as e:
         logger.error(f"MongoDB connection error: {e}")
         raise
@@ -148,6 +154,23 @@ async def create_indexes():
         # Feature flags collection indexes
         await database.feature_flags.create_index([("key", 1)], unique=True)
         await database.feature_flags.create_index([("is_enabled", 1)])
+
+        # Whiteboards collection indexes
+        await database.whiteboards.create_index([("owner_id", 1)])
+        await database.whiteboards.create_index([("is_public", 1)])
+        await database.whiteboards.create_index([("tags", 1)])
+        await database.whiteboards.create_index([("created_at", -1)])
+        await database.whiteboards.create_index([("updated_at", -1)])
+
+        # Whiteboard items collection indexes
+        await database.whiteboard_items.create_index([("whiteboard_id", 1)])
+        await database.whiteboard_items.create_index([("item_type", 1)])
+        await database.whiteboard_items.create_index([("z_index", 1)])
+
+        # Whiteboard shares collection indexes
+        await database.whiteboard_shares.create_index([("whiteboard_id", 1)])
+        await database.whiteboard_shares.create_index([("user_id", 1)])
+        await database.whiteboard_shares.create_index([("whiteboard_id", 1), ("user_id", 1)], unique=True)
 
         logger.info("Database indexes created successfully")
         

@@ -1,17 +1,26 @@
 """
-Environment configuration
+Environment configuration with validation
 """
 from pydantic_settings import BaseSettings
 from typing import Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "mongodb://localhost:27017/housing_db"
+    READ_REPLICA_URL: Optional[str] = None
     DATABASE_ECHO: bool = False
+    MAX_DB_CONNECTIONS: int = 100
+    MIN_DB_CONNECTIONS: int = 10
+    CONNECTION_POOL_RECYCLE: int = 3600
+    CONNECTION_POOL_TIMEOUT: int = 30
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379"
+    REDIS_PASSWORD: Optional[str] = None
     CACHE_TTL: int = 3600  # 1 hour
 
     # Firecrawl
@@ -209,6 +218,43 @@ class Settings(BaseSettings):
         env_file = ".env"
         case_sensitive = True
 
+    def validate_settings(self):
+        """Validate critical settings"""
+        errors = []
+
+        # Validate JWT secret
+        if self.JWT_SECRET_KEY == "your-secret-key-change-in-production" and self.ENVIRONMENT == "production":
+            errors.append("JWT_SECRET_KEY must be changed in production")
+
+        # Validate database URL
+        if not self.DATABASE_URL:
+            errors.append("DATABASE_URL is required")
+
+        # Validate Redis URL
+        if not self.REDIS_URL:
+            errors.append("REDIS_URL is required")
+
+        # Validate environment
+        if self.ENVIRONMENT not in ["development", "staging", "production"]:
+            errors.append("ENVIRONMENT must be one of: development, staging, production")
+
+        # Validate connection pool settings
+        if self.MIN_DB_CONNECTIONS >= self.MAX_DB_CONNECTIONS:
+            errors.append("MIN_DB_CONNECTIONS must be less than MAX_DB_CONNECTIONS")
+
+        if errors:
+            for error in errors:
+                logger.error(f"Configuration error: {error}")
+            raise ValueError(f"Configuration validation failed: {'; '.join(errors)}")
+
+        logger.info("Configuration validation passed")
+
 
 settings = Settings()
+
+# Validate settings on import
+try:
+    settings.validate_settings()
+except Exception as e:
+    logger.warning(f"Settings validation warning: {e}")
 

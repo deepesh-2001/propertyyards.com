@@ -227,6 +227,29 @@ class FeatureFlagManager:
                 enabled_for_roles=["admin"]
             ),
 
+            # Whiteboard features
+            "whiteboard_enabled": FeatureFlag(
+                key="whiteboard_enabled",
+                name="Collaborative Whiteboard",
+                description="Enable collaborative whiteboard functionality",
+                is_enabled=True,
+                enabled_for_roles=["admin", "agent", "seller", "buyer"]
+            ),
+            "whiteboard_sharing": FeatureFlag(
+                key="whiteboard_sharing",
+                name="Whiteboard Sharing",
+                description="Enable whiteboard sharing with other users",
+                is_enabled=True,
+                enabled_for_roles=["admin", "agent", "seller"]
+            ),
+            "whiteboard_public": FeatureFlag(
+                key="whiteboard_public",
+                name="Public Whiteboards",
+                description="Enable creating public whiteboards",
+                is_enabled=True,
+                enabled_for_roles=["admin", "agent"]
+            ),
+
             # User management features
             "user_management": FeatureFlag(
                 key="user_management",
