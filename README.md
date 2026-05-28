@@ -44,6 +44,9 @@ Commissions, payroll, tax (India), reimbursements, claims, credit cards
 ### 🔧 Operations
 HR onboarding/offboarding, attendance, notifications, monitoring
 
+### 🛡️ Insurance (NEW)
+Health, Life, Property, Home insurance scraped from web with sales integration
+
 ---
 
 ## Architecture
@@ -86,6 +89,15 @@ HR onboarding/offboarding, attendance, notifications, monitoring
 `POST /api/commission/calculate` — Calculate commission  
 `POST /api/salary/periods/{id}/process` — Run payroll  
 `POST /api/tax/compute` — Compute tax
+
+### Insurance (NEW)
+`GET /api/insurance/plans` — Scraped insurance plans  
+`GET /api/insurance/providers` — Insurance providers  
+`POST /api/insurance/recommend` — AI-recommended plans  
+`POST /api/insurance/compare` — Compare plans side-by-side  
+`POST /api/insurance/sales/{id}/quotes` — Generate sale quotes  
+`GET /api/insurance/sales/{id}/summary` — Sale insurance summary  
+`GET /api/insurance/dashboard/metrics` — Insurance sales metrics
 
 **Full API docs:** http://localhost/docs
 
