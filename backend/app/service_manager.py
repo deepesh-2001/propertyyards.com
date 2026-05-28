@@ -66,6 +66,8 @@ class ServiceManager:
                 ("usage_tracker", self._init_usage_tracker, []),
                 ("auto_scaler", self._init_auto_scaler, []),
                 ("auto_healing", self._init_auto_healing, []),
+                ("flight_comparison", self._init_flight_comparison, []),
+                ("price_comparison", self._init_price_comparison, []),
                 ("idle_processor", self._init_idle_processor, ["all"]),
             ]
 
