@@ -172,6 +172,21 @@ async def create_indexes():
         await database.whiteboard_shares.create_index([("user_id", 1)])
         await database.whiteboard_shares.create_index([("whiteboard_id", 1), ("user_id", 1)], unique=True)
 
+        # Persistent cache collection indexes
+        await database.cache.create_index([("key", 1)], unique=True)
+        await database.cache.create_index([("expires_at", 1)])
+        await database.cache.create_index([("access_count", -1)])
+
+        # Time-series collection indexes
+        await database.timeseries.create_index([("metric_name", 1), ("timestamp", -1)])
+        await database.timeseries.create_index([("metric_name", 1), ("granularity", 1), ("timestamp", -1)])
+        await database.timeseries.create_index([("tags", 1)])
+        await database.timeseries.create_index([("timestamp", 1)])
+
+        # Analytics history collection indexes
+        await database.analytics_history.create_index([("type", 1), ("date", -1)])
+        await database.analytics_history.create_index([("date", -1)])
+
         logger.info("Database indexes created successfully")
         
     except Exception as e:

@@ -1,6 +1,6 @@
 """
 Enhanced Analytics Manager
-Handles comprehensive analytics aggregations for properties, users, revenue, commissions, and inquiries
+Handles comprehensive analytics aggregations with materialized views and caching
 """
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
@@ -8,6 +8,9 @@ from collections import defaultdict
 import logging
 
 from app.cache import get_from_cache, set_in_cache, delete_from_cache, generate_cache_key, invalidate_cache_pattern
+from app.persistent_cache import persistent_cache
+from app.cache_pipeline import redis_pipeline, local_cache
+from app.db_optimized import query_optimizer, fast_analytics
 
 logger = logging.getLogger(__name__)
 
@@ -25,37 +28,73 @@ class AnalyticsManager:
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None
     ) -> Dict[str, Any]:
-        """Get comprehensive property analytics"""
+        """Get comprehensive property analytics with optimized caching"""
         try:
-            # Check cache
+            # Use persistent cache with materialized view fallback
             cache_key = generate_cache_key(
                 self.cache_prefix,
                 "property",
                 start_date.isoformat() if start_date else "none",
                 end_date.isoformat() if end_date else "none"
             )
-            cached = await get_from_cache(cache_key)
-            if cached:
-                return cached
 
-            # Build date filter
-            date_filter = {}
-            if start_date:
-                date_filter["$gte"] = start_date
-            if end_date:
-                date_filter["$lte"] = end_date
-            if date_filter:
-                query = {"created_at": date_filter}
-            else:
-                query = {}
+            # Try local cache first (ultra-fast)
+            local_result = local_cache.get(cache_key)
+            if local_result:
+                return local_result
 
-            # Total properties
-            total_properties = await database.properties.count_documents(query)
+            # Use optimized query with read replica
+            async def _compute_analytics():
+                return await self._compute_property_analytics(database, start_date, end_date)
 
-            # By status
-            active_properties = await database.properties.count_documents({**query, "status": "active"})
-            sold_properties = await database.properties.count_documents({**query, "status": "sold"})
-            pending_properties = await database.properties.count_documents({**query, "status": "pending"})
+            result = await persistent_cache.get_or_compute(
+                cache_key,
+                _compute_analytics,
+                database=database,
+                ttl=self.cache_ttl,
+                persist=True
+            )
+
+            # Store in local cache for ultra-fast access
+            local_cache.set(cache_key, result, ttl=60)
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Property analytics error: {e}")
+            raise
+
+    async def _compute_property_analytics(
+        self,
+        database,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None
+    ) -> Dict[str, Any]:
+        """Compute property analytics (internal method)"""
+        # Build date filter
+        date_filter = {}
+        if start_date:
+            date_filter["$gte"] = start_date
+        if end_date:
+            date_filter["$lte"] = end_date
+        if date_filter:
+            query = {"created_at": date_filter}
+        else:
+            query = {}
+
+        # Use fast analytics if no date filter
+        if not start_date and not end_date:
+            fast_stats = await fast_analytics.get_property_stats_fast(database)
+            if fast_stats:
+                return fast_stats
+
+        # Total properties
+        total_properties = await database.properties.count_documents(query)
+
+        # By status
+        active_properties = await database.properties.count_documents({**query, "status": "active"})
+        sold_properties = await database.properties.count_documents({**query, "status": "sold"})
+        pending_properties = await database.properties.count_documents({**query, "status": "pending"})
 
             # By type
             type_pipeline = [

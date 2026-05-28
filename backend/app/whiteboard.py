@@ -1,12 +1,14 @@
 """
 Whiteboard Manager
 Handles collaborative whiteboard functionality with items, sharing, and permissions
+Optimized with persistent caching and batch operations
 """
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 import logging
 
 from app.cache import get_from_cache, set_in_cache, delete_from_cache, generate_cache_key, invalidate_cache_pattern
+from app.persistent_cache import persistent_cache
 
 logger = logging.getLogger(__name__)
 
@@ -523,6 +525,251 @@ class WhiteboardManager:
         except Exception as e:
             logger.error(f"Shared whiteboards retrieval error: {e}")
             return []
+
+    # ========== Batch Operations ==========
+
+    async def batch_add_items(
+        self,
+        whiteboard_id: str,
+        items_data: List[Dict[str, Any]],
+        user_id: str,
+        database
+    ) -> List[Dict[str, Any]]:
+        """Add multiple items to a whiteboard in batch"""
+        try:
+            # Check permission
+            if not await self._has_permission(whiteboard_id, user_id, "edit", database):
+                raise ValueError("Permission denied")
+
+            # Prepare items
+            items = []
+            now = datetime.utcnow()
+            for item_data in items_data:
+                item = {
+                    **item_data,
+                    "whiteboard_id": whiteboard_id,
+                    "created_at": now,
+                    "updated_at": now
+                }
+                items.append(item)
+
+            # Insert all at once
+            result = await database.whiteboard_items.insert_many(items)
+
+            # Update whiteboard timestamp
+            await database.whiteboards.update_one(
+                {"_id": whiteboard_id},
+                {"$set": {"updated_at": now}}
+            )
+
+            # Invalidate cache
+            cache_key = generate_cache_key(self.cache_prefix, whiteboard_id)
+            await delete_from_cache(cache_key)
+
+            # Return items with IDs
+            for i, item in enumerate(items):
+                item["id"] = str(result.inserted_ids[i])
+
+            logger.info(f"Batch added {len(items)} items to whiteboard {whiteboard_id}")
+            return items
+
+        except Exception as e:
+            logger.error(f"Batch add items error: {e}")
+            raise
+
+    async def batch_update_items(
+        self,
+        updates: List[Dict[str, Any]],
+        user_id: str,
+        database
+    ) -> List[Dict[str, Any]]:
+        """Update multiple items in batch"""
+        try:
+            results = []
+            now = datetime.utcnow()
+
+            for update in updates:
+                item_id = update["id"]
+
+                # Get item to check permission
+                item = await database.whiteboard_items.find_one({"_id": item_id})
+                if not item:
+                    continue
+
+                # Check permission
+                if not await self._has_permission(item["whiteboard_id"], user_id, "edit", database):
+                    continue
+
+                # Prepare update
+                update_data = {k: v for k, v in update.items() if k != "id"}
+                update_data["updated_at"] = now
+
+                await database.whiteboard_items.update_one(
+                    {"_id": item_id},
+                    {"$set": update_data}
+                )
+
+                # Get updated item
+                updated = await database.whiteboard_items.find_one({"_id": item_id})
+                updated["id"] = str(updated["_id"])
+                del updated["_id"]
+                results.append(updated)
+
+            # Invalidate caches
+            for update in updates:
+                if "id" in update:
+                    item = await database.whiteboard_items.find_one({"_id": update["id"]})
+                    if item:
+                        cache_key = generate_cache_key(self.cache_prefix, item["whiteboard_id"])
+                        await delete_from_cache(cache_key)
+
+            logger.info(f"Batch updated {len(results)} items")
+            return results
+
+        except Exception as e:
+            logger.error(f"Batch update items error: {e}")
+            raise
+
+    async def batch_delete_items(
+        self,
+        item_ids: List[str],
+        user_id: str,
+        database
+    ) -> int:
+        """Delete multiple items in batch"""
+        try:
+            deleted_count = 0
+            affected_whiteboards = set()
+
+            for item_id in item_ids:
+                item = await database.whiteboard_items.find_one({"_id": item_id})
+                if not item:
+                    continue
+
+                # Check permission
+                if not await self._has_permission(item["whiteboard_id"], user_id, "edit", database):
+                    continue
+
+                await database.whiteboard_items.delete_one({"_id": item_id})
+                affected_whiteboards.add(item["whiteboard_id"])
+                deleted_count += 1
+
+            # Update whiteboard timestamps and invalidate caches
+            for whiteboard_id in affected_whiteboards:
+                await database.whiteboards.update_one(
+                    {"_id": whiteboard_id},
+                    {"$set": {"updated_at": datetime.utcnow()}}
+                )
+                cache_key = generate_cache_key(self.cache_prefix, whiteboard_id)
+                await delete_from_cache(cache_key)
+
+            logger.info(f"Batch deleted {deleted_count} items")
+            return deleted_count
+
+        except Exception as e:
+            logger.error(f"Batch delete items error: {e}")
+            raise
+
+    async def export_whiteboard(
+        self,
+        whiteboard_id: str,
+        user_id: str,
+        database
+    ) -> Dict[str, Any]:
+        """Export whiteboard data for efficient storage/transmission"""
+        try:
+            whiteboard = await self.get_whiteboard(whiteboard_id, user_id, database)
+            if not whiteboard:
+                raise ValueError("Whiteboard not found")
+
+            # Compress data
+            export = {
+                "version": "1.0",
+                "exported_at": datetime.utcnow().isoformat(),
+                "whiteboard": {
+                    "id": whiteboard["id"],
+                    "title": whiteboard["title"],
+                    "description": whiteboard.get("description"),
+                    "background_color": whiteboard["background_color"],
+                    "grid_enabled": whiteboard["grid_enabled"],
+                    "is_public": whiteboard["is_public"],
+                    "tags": whiteboard["tags"],
+                    "owner_id": whiteboard["owner_id"]
+                },
+                "items": [
+                    {
+                        "id": item["id"],
+                        "item_type": item["item_type"],
+                        "x": item["x"],
+                        "y": item["y"],
+                        "width": item.get("width"),
+                        "height": item.get("height"),
+                        "content": item.get("content"),
+                        "color": item.get("color"),
+                        "background_color": item.get("background_color"),
+                        "font_size": item.get("font_size"),
+                        "rotation": item.get("rotation"),
+                        "z_index": item.get("z_index"),
+                        "metadata": item.get("metadata")
+                    }
+                    for item in whiteboard.get("items", [])
+                ]
+            }
+
+            return export
+
+        except Exception as e:
+            logger.error(f"Export whiteboard error: {e}")
+            raise
+
+    async def import_whiteboard(
+        self,
+        export_data: Dict[str, Any],
+        owner_id: str,
+        database
+    ) -> Dict[str, Any]:
+        """Import whiteboard data"""
+        try:
+            # Create whiteboard
+            whiteboard_data = {
+                "title": export_data["whiteboard"]["title"],
+                "description": export_data["whiteboard"].get("description"),
+                "background_color": export_data["whiteboard"]["background_color"],
+                "grid_enabled": export_data["whiteboard"]["grid_enabled"],
+                "is_public": export_data["whiteboard"]["is_public"],
+                "tags": export_data["whiteboard"]["tags"]
+            }
+
+            whiteboard = await self.create_whiteboard(whiteboard_data, owner_id, database)
+
+            # Batch add items
+            items_data = [
+                {
+                    "item_type": item["item_type"],
+                    "x": item["x"],
+                    "y": item["y"],
+                    "width": item.get("width"),
+                    "height": item.get("height"),
+                    "content": item.get("content"),
+                    "color": item.get("color"),
+                    "background_color": item.get("background_color"),
+                    "font_size": item.get("font_size"),
+                    "rotation": item.get("rotation"),
+                    "z_index": item.get("z_index"),
+                    "metadata": item.get("metadata")
+                }
+                for item in export_data.get("items", [])
+            ]
+
+            if items_data:
+                await self.batch_add_items(whiteboard["id"], items_data, owner_id, database)
+
+            # Refresh and return
+            return await self.get_whiteboard(whiteboard["id"], owner_id, database)
+
+        except Exception as e:
+            logger.error(f"Import whiteboard error: {e}")
+            raise
 
 
 # Global manager instance
