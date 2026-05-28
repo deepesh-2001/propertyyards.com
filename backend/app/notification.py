@@ -168,6 +168,235 @@ class EmailNotificationService:
             server.login(self.smtp_username, self.smtp_password)
             server.send_message(msg)
 
+    async def send_onboarding_welcome(
+        self,
+        employee_name: str,
+        employee_email: str,
+        employee_phone: str,
+        designation: str,
+        department: str,
+        date_of_joining: datetime,
+        reporting_manager_name: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Send welcome email to new employee"""
+        try:
+            subject = f"Welcome to the Team, {employee_name}!"
+            
+            html_body = f"""
+            <html>
+            <head>
+                <style>
+                    body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                    .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+                    .header h1 {{ margin: 0; font-size: 28px; }}
+                    .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+                    .info-box {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; }}
+                    .info-box h3 {{ color: #667eea; margin-top: 0; }}
+                    .details {{ display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }}
+                    .detail-item {{ padding: 10px; background: #f0f0f0; border-radius: 5px; }}
+                    .detail-label {{ font-weight: bold; color: #666; font-size: 12px; }}
+                    .detail-value {{ font-size: 16px; color: #333; }}
+                    .footer {{ text-align: center; margin-top: 30px; color: #666; font-size: 12px; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>🎉 Welcome Aboard!</h1>
+                        <p>We're Excited to Have You Join Us</p>
+                    </div>
+                    <div class="content">
+                        <p>Dear <strong>{employee_name}</strong>,</p>
+                        <p>We are thrilled to welcome you to our team as <strong>{designation}</strong> in the <strong>{department}</strong> department.</p>
+                        
+                        <div class="info-box">
+                            <h3>Your Joining Details</h3>
+                            <div class="details">
+                                <div class="detail-item">
+                                    <div class="detail-label">Designation</div>
+                                    <div class="detail-value">{designation}</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Department</div>
+                                    <div class="detail-value">{department}</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Date of Joining</div>
+                                    <div class="detail-value">{date_of_joining.strftime('%B %d, %Y')}</div>
+                                </div>
+                                {f'''<div class="detail-item">
+                                    <div class="detail-label">Reporting Manager</div>
+                                    <div class="detail-value">{reporting_manager_name}</div>
+                                </div>''' if reporting_manager_name else ''}
+                            </div>
+                        </div>
+                        
+                        <p>Your onboarding process has been initiated. Please complete the checklist items in the portal to ensure a smooth transition.</p>
+                        
+                        <div style="text-align: center; margin: 20px 0;">
+                            <a href="#" style="display: inline-block; padding: 15px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px;">Access Onboarding Portal</a>
+                        </div>
+                        
+                        <p>If you have any questions, feel free to reach out to HR.</p>
+                        
+                        <div class="footer">
+                            <p>This is an automated email. Please do not reply.</p>
+                            <p>&copy; 2026 Housing Platform. All rights reserved.</p>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From'] = self.from_email
+            msg['To'] = employee_email
+            
+            html_part = MIMEText(html_body, 'html')
+            msg.attach(html_part)
+            
+            await self._send_email(msg)
+            
+            return {"success": True, "status": "sent", "sent_at": datetime.utcnow()}
+        except Exception as e:
+            logger.error(f"Onboarding welcome email error: {e}")
+            return {"success": False, "status": "failed", "error": str(e)}
+
+    async def send_onboarding_status_update(
+        self,
+        employee_name: str,
+        employee_email: str,
+        status: str,
+        notes: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Send onboarding status update email"""
+        try:
+            subject = f"Onboarding Status Update - {status.replace('_', ' ').title()}"
+            
+            status_messages = {
+                "in_progress": "Your onboarding is now in progress",
+                "documents_submitted": "Your documents have been submitted for verification",
+                "verification_pending": "Your documents are under verification",
+                "approved": "Your onboarding has been approved",
+                "rejected": "Your onboarding has been rejected",
+                "completed": "Your onboarding is complete"
+            }
+            
+            message = status_messages.get(status, f"Your onboarding status is now: {status}")
+            
+            html_body = f"""
+            <html>
+            <head>
+                <style>
+                    body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                    .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+                    .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+                    .status-box {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; }}
+                    .footer {{ text-align: center; margin-top: 30px; color: #666; font-size: 12px; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>📋 Onboarding Update</h1>
+                    </div>
+                    <div class="content">
+                        <p>Dear <strong>{employee_name}</strong>,</p>
+                        <p>{message}.</p>
+                        {f'<div class="status-box"><strong>Note:</strong> {notes}</div>' if notes else ''}
+                        <p>Please check your onboarding portal for the latest checklist status.</p>
+                        <div class="footer">
+                            <p>&copy; 2026 Housing Platform. All rights reserved.</p>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From'] = self.from_email
+            msg['To'] = employee_email
+            
+            html_part = MIMEText(html_body, 'html')
+            msg.attach(html_part)
+            
+            await self._send_email(msg)
+            
+            return {"success": True, "status": "sent", "sent_at": datetime.utcnow()}
+        except Exception as e:
+            logger.error(f"Onboarding status email error: {e}")
+            return {"success": False, "status": "failed", "error": str(e)}
+
+    async def send_offboarding_notification(
+        self,
+        employee_name: str,
+        employee_email: str,
+        last_working_day: datetime,
+        reason_for_leaving: str
+    ) -> Dict[str, Any]:
+        """Send offboarding notification email"""
+        try:
+            subject = f"Offboarding Process Initiated - {employee_name}"
+            
+            html_body = f"""
+            <html>
+            <head>
+                <style>
+                    body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                    .header {{ background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+                    .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+                    .info-box {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f5576c; }}
+                    .footer {{ text-align: center; margin-top: 30px; color: #666; font-size: 12px; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>👋 Thank You for Your Service</h1>
+                    </div>
+                    <div class="content">
+                        <p>Dear <strong>{employee_name}</strong>,</p>
+                        <p>We have initiated your offboarding process. We appreciate your contributions to the team.</p>
+                        
+                        <div class="info-box">
+                            <h3>Offboarding Details</h3>
+                            <p><strong>Last Working Day:</strong> {last_working_day.strftime('%B %d, %Y')}</p>
+                            <p><strong>Reason:</strong> {reason_for_leaving}</p>
+                        </div>
+                        
+                        <p>Please complete the clearance checklist items in the portal to ensure a smooth exit process.</p>
+                        
+                        <div class="footer">
+                            <p>&copy; 2026 Housing Platform. All rights reserved.</p>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From'] = self.from_email
+            msg['To'] = employee_email
+            
+            html_part = MIMEText(html_body, 'html')
+            msg.attach(html_part)
+            
+            await self._send_email(msg)
+            
+            return {"success": True, "status": "sent", "sent_at": datetime.utcnow()}
+        except Exception as e:
+            logger.error(f"Offboarding email error: {e}")
+            return {"success": False, "status": "failed", "error": str(e)}
+
 
 class WhatsAppNotificationService:
     """WhatsApp notification service"""
@@ -260,7 +489,7 @@ class WhatsAppNotificationService:
         """Generate WhatsApp message for investment greeting"""
         size_str = f"{notification.property_size} sq ft" if notification.property_size else "N/A"
         location_str = notification.property_location or "N/A"
-        
+
         message = f"""
 🎉 *Congratulations {notification.investor_name}!*
 
@@ -274,6 +503,164 @@ Your investment in *{notification.property_name}* has been successfully processe
 Thank you for choosing our platform!
         """
         return message.strip()
+
+    async def send_onboarding_welcome_whatsapp(
+        self,
+        employee_name: str,
+        employee_phone: str,
+        designation: str,
+        department: str,
+        date_of_joining: datetime,
+        reporting_manager_name: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Send welcome WhatsApp message to new employee"""
+        try:
+            import aiohttp
+
+            message = f"""
+🎉 *Welcome to the Team, {employee_name}!*
+
+We're excited to have you join us as *{designation}* in the *{department}* department.
+
+📅 *Date of Joining:* {date_of_joining.strftime('%B %d, %Y')}
+{f'👤 *Reporting Manager:* {reporting_manager_name}' if reporting_manager_name else ''}
+
+Your onboarding process has been initiated. Please complete the checklist items in the portal.
+
+If you have any questions, feel free to reach out to HR.
+
+Welcome aboard! 🚀
+            """.strip()
+
+            headers = {
+                "Authorization": f"Bearer {self.access_token}",
+                "Content-Type": "application/json"
+            }
+
+            payload = {
+                "messaging_product": "whatsapp",
+                "to": employee_phone,
+                "type": "text",
+                "text": {"body": message}
+            }
+
+            async with aiohttp.ClientSession() as session:
+                async with session.post(self.api_url, headers=headers, json=payload) as response:
+                    if response.status == 200:
+                        return {"success": True, "status": "sent", "sent_at": datetime.utcnow()}
+                    else:
+                        error_text = await response.text()
+                        logger.error(f"WhatsApp API error: {error_text}")
+                        return {"success": False, "status": "failed", "error": error_text}
+        except Exception as e:
+            logger.error(f"Onboarding WhatsApp error: {e}")
+            return {"success": False, "status": "failed", "error": str(e)}
+
+    async def send_onboarding_status_whatsapp(
+        self,
+        employee_name: str,
+        employee_phone: str,
+        status: str,
+        notes: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Send onboarding status update WhatsApp message"""
+        try:
+            import aiohttp
+
+            status_messages = {
+                "in_progress": "Your onboarding is now in progress",
+                "documents_submitted": "Your documents have been submitted for verification",
+                "verification_pending": "Your documents are under verification",
+                "approved": "Your onboarding has been approved",
+                "rejected": "Your onboarding has been rejected",
+                "completed": "Your onboarding is complete"
+            }
+
+            message = f"""
+📋 *Onboarding Update*
+
+Dear {employee_name},
+
+{status_messages.get(status, f"Your onboarding status is now: {status}")}.
+
+{f'📝 *Note:* {notes}' if notes else ''}
+
+Please check your onboarding portal for the latest checklist status.
+            """.strip()
+
+            headers = {
+                "Authorization": f"Bearer {self.access_token}",
+                "Content-Type": "application/json"
+            }
+
+            payload = {
+                "messaging_product": "whatsapp",
+                "to": employee_phone,
+                "type": "text",
+                "text": {"body": message}
+            }
+
+            async with aiohttp.ClientSession() as session:
+                async with session.post(self.api_url, headers=headers, json=payload) as response:
+                    if response.status == 200:
+                        return {"success": True, "status": "sent", "sent_at": datetime.utcnow()}
+                    else:
+                        error_text = await response.text()
+                        logger.error(f"WhatsApp API error: {error_text}")
+                        return {"success": False, "status": "failed", "error": error_text}
+        except Exception as e:
+            logger.error(f"Onboarding status WhatsApp error: {e}")
+            return {"success": False, "status": "failed", "error": str(e)}
+
+    async def send_offboarding_whatsapp(
+        self,
+        employee_name: str,
+        employee_phone: str,
+        last_working_day: datetime,
+        reason_for_leaving: str
+    ) -> Dict[str, Any]:
+        """Send offboarding WhatsApp notification"""
+        try:
+            import aiohttp
+
+            message = f"""
+👋 *Thank You for Your Service*
+
+Dear {employee_name},
+
+We have initiated your offboarding process. We appreciate your contributions to the team.
+
+📅 *Last Working Day:* {last_working_day.strftime('%B %d, %Y')}
+📝 *Reason:* {reason_for_leaving}
+
+Please complete the clearance checklist items in the portal to ensure a smooth exit process.
+
+Best wishes for your future endeavors!
+            """.strip()
+
+            headers = {
+                "Authorization": f"Bearer {self.access_token}",
+                "Content-Type": "application/json"
+            }
+
+            payload = {
+                "messaging_product": "whatsapp",
+                "to": employee_phone,
+                "type": "text",
+                "text": {"body": message}
+            }
+
+            async with aiohttp.ClientSession() as session:
+                async with session.post(self.api_url, headers=headers, json=payload) as response:
+                    if response.status == 200:
+                        return {"success": True, "status": "sent", "sent_at": datetime.utcnow()}
+                    else:
+                        error_text = await response.text()
+                        logger.error(f"WhatsApp API error: {error_text}")
+                        return {"success": False, "status": "failed", "error": error_text}
+        except Exception as e:
+            logger.error(f"Offboarding WhatsApp error: {e}")
+            return {"success": False, "status": "failed", "error": str(e)}
 
 
 class NotificationManager:

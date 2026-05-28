@@ -9,7 +9,8 @@ import logging
 from app.schemas import (
     SalaryComponentType,
     PayrollFrequency,
-    PayrollStatus
+    PayrollStatus,
+    TaxRegime,
 )
 
 logger = logging.getLogger(__name__)
@@ -28,16 +29,14 @@ class SalaryCalculator:
         self.pf_rate = 0.12  # 12% of basic salary
         self.esi_rate = 0.01  # 1% of gross salary
     
-    def calculate_tax(self, annual_income: float) -> float:
-        """Calculate income tax based on annual income"""
-        if annual_income <= 250000:
-            return 0
-        elif annual_income <= 500000:
-            return (annual_income - 250000) * 0.05
-        elif annual_income <= 1000000:
-            return 12500 + (annual_income - 500000) * 0.20
-        else:
-            return 112500 + (annual_income - 1000000) * 0.30
+    def calculate_tax(self, annual_income: float, regime: TaxRegime = TaxRegime.NEW) -> float:
+        """Calculate income tax via the central TaxEngine (supports old/new regime)."""
+        from app.tax import tax_engine
+        result = tax_engine.compute(
+            gross_annual_income=annual_income,
+            regime=regime,
+        )
+        return result["total_tax_liability"]
     
     def calculate_pf(self, basic_salary: float) -> float:
         """Calculate Provident Fund deduction"""
@@ -87,6 +86,7 @@ class SalaryCalculator:
         monthly_tax = self.calculate_tax(gross_salary * 12) / 12
         
         total_deductions = sum(deductions.values()) + pf_deduction + esi_deduction + monthly_tax
+        other_deductions = sum(deductions.values())
         
         # Calculate net salary
         net_salary = gross_salary - total_deductions
@@ -104,8 +104,10 @@ class SalaryCalculator:
             "pf_deduction": pf_deduction,
             "esi_deduction": esi_deduction,
             "tax_deduction": monthly_tax,
+            "other_deductions": other_deductions,
             "total_deductions": total_deductions,
             "net_salary": net_salary,
+            "reimbursement_total": 0.0,
             "employer_pf_contribution": pf_deduction,
             "employer_esi_contribution": esi_deduction * 4  # Employer contributes 4% for ESI
         }
@@ -132,6 +134,8 @@ class PayrollProcessor:
             # Get all active employees
             employees = await database.users.find({"role": "employee", "is_active": True}).to_list(length=1000)
             
+            from app.reimbursement import reimbursement_manager
+            
             processed_entries = []
             total_amount = 0
             
@@ -153,14 +157,27 @@ class PayrollProcessor:
                     payroll_period
                 )
                 
+                # Pull approved reimbursements and add to net pay
+                employee_id_str = str(employee["_id"])
+                reimbursements = await reimbursement_manager.get_approved_for_employee(
+                    employee_id_str, database
+                )
+                reimbursement_total = sum(r.get("approved_amount") or 0 for r in reimbursements)
+                salary_breakdown["reimbursement_total"] = reimbursement_total
+                salary_breakdown["net_salary"] += reimbursement_total
+
                 # Create payroll entry
                 payroll_entry = {
                     "payroll_period_id": payroll_period_id,
-                    "employee_id": str(employee["_id"]),
+                    "employee_id": employee_id_str,
                     "employee_name": f"{employee.get('first_name', '')} {employee.get('last_name', '')}",
                     "employee_designation": employee.get("designation", "N/A"),
                     **salary_breakdown,
                     "status": PayrollStatus.PROCESSED,
+                    "payment_date": None,
+                    "payment_method": None,
+                    "transaction_id": None,
+                    "notes": None,
                     "created_at": datetime.utcnow(),
                     "updated_at": datetime.utcnow()
                 }
@@ -170,6 +187,14 @@ class PayrollProcessor:
                 
                 processed_entries.append(payroll_entry)
                 total_amount += salary_breakdown["net_salary"]
+
+                # Mark reimbursements as paid through this payroll period
+                if reimbursements:
+                    await reimbursement_manager.mark_paid_via_payroll(
+                        reimbursement_ids=[r["id"] for r in reimbursements],
+                        payroll_period_id=payroll_period_id,
+                        database=database,
+                    )
             
             # Update payroll period
             await database.payroll_periods.update_one(

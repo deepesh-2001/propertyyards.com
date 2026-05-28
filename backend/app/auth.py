@@ -7,6 +7,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from app.config import settings
+from app.session import session_manager
 import logging
 
 logger = logging.getLogger(__name__)
@@ -121,4 +122,38 @@ class Role:
     AGENT = "agent"
 
     ALL = [ADMIN, SELLER, BUYER, AGENT]
+
+
+async def create_user_session(
+    user_id: str,
+    email: str,
+    role: str,
+    user_agent: Optional[str] = None,
+    ip_address: Optional[str] = None,
+    metadata: Optional[dict] = None
+) -> dict:
+    """Create a new user session"""
+    return await session_manager.create_session(
+        user_id=user_id,
+        email=email,
+        role=role,
+        user_agent=user_agent,
+        ip_address=ip_address,
+        metadata=metadata
+    )
+
+
+async def invalidate_session(session_id: str) -> bool:
+    """Invalidate a specific session"""
+    return await session_manager.delete_session(session_id)
+
+
+async def invalidate_all_user_sessions(user_id: str) -> int:
+    """Invalidate all sessions for a user (logout from all devices)"""
+    return await session_manager.delete_user_sessions(user_id)
+
+
+async def get_active_sessions(user_id: str) -> list:
+    """Get all active sessions for a user"""
+    return await session_manager.get_user_sessions(user_id)
 

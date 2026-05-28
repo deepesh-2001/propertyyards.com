@@ -1800,6 +1800,7 @@ class CommissionType(str, Enum):
     TARGET_BONUS = "target_bonus"
     BUILDER_PROPERTY = "builder_property"
     LOAN_COMMISSION = "loan_commission"
+    CREDIT_CARD_CASHBACK = "credit_card_cashback"
 
 
 class CommissionStatus(str, Enum):
@@ -2383,6 +2384,19 @@ class CreditCardComparison(BaseModel):
     comparison_criteria: List[str]
     recommendation: str
     best_card: CreditCardRecommendation
+
+
+class BestCreditCardCashback(BaseModel):
+    card_name: str
+    bank_name: str
+    card_type: CreditCardType
+    tier: CreditCardTier
+    reward_rate: float
+    reward_categories: List[RewardCategory]
+    estimated_points: int
+    estimated_cashback: float
+    net_cashback_after_fee: float
+    match_score: float
 
 
 class PointsRedemptionCreate(BaseModel):
@@ -3472,4 +3486,592 @@ class ImageStats(BaseModel):
     total_size_bytes: int
     by_category: Dict[str, int]
     recent_uploads: List[ImageUploadResponse]
+
+
+# ========== Reimbursement Schemas ==========
+
+class ReimbursementCategory(str, Enum):
+    TRAVEL = "travel"
+    ACCOMMODATION = "accommodation"
+    MEALS = "meals"
+    EQUIPMENT = "equipment"
+    MEDICAL = "medical"
+    TRAINING = "training"
+    COMMUNICATION = "communication"
+    OTHER = "other"
+
+
+class ReimbursementStatus(str, Enum):
+    DRAFT = "draft"
+    SUBMITTED = "submitted"
+    UNDER_REVIEW = "under_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    PAID = "paid"
+
+
+class ReimbursementCreate(BaseModel):
+    employee_id: str
+    category: ReimbursementCategory
+    title: str
+    description: Optional[str] = None
+    amount: float = Field(..., gt=0)
+    expense_date: datetime
+    receipt_urls: Optional[List[str]] = []
+    notes: Optional[str] = None
+
+
+class ReimbursementResponse(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    category: ReimbursementCategory
+    title: str
+    description: Optional[str]
+    amount: float
+    approved_amount: Optional[float]
+    expense_date: datetime
+    receipt_urls: List[str]
+    status: ReimbursementStatus
+    submitted_at: Optional[datetime]
+    reviewed_by: Optional[str]
+    reviewed_at: Optional[datetime]
+    rejection_reason: Optional[str]
+    paid_at: Optional[datetime]
+    payroll_period_id: Optional[str]
+    notes: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class ReimbursementReview(BaseModel):
+    approved_amount: Optional[float] = None
+    rejection_reason: Optional[str] = None
+
+
+class ReimbursementAnalytics(BaseModel):
+    total_submitted: float
+    total_approved: float
+    total_paid: float
+    total_pending: float
+    by_category: Dict[str, float]
+    by_status: Dict[str, int]
+    average_processing_days: float
+
+
+# ========== Claims Schemas ==========
+
+class ClaimType(str, Enum):
+    MEDICAL = "medical"
+    ACCIDENT = "accident"
+    LIFE_INSURANCE = "life_insurance"
+    PROPERTY_DAMAGE = "property_damage"
+    TRAVEL_INSURANCE = "travel_insurance"
+    COMMISSION_DISPUTE = "commission_dispute"
+    SALARY_DISPUTE = "salary_dispute"
+    OTHER = "other"
+
+
+class ClaimStatus(str, Enum):
+    OPEN = "open"
+    UNDER_INVESTIGATION = "under_investigation"
+    APPROVED = "approved"
+    PARTIALLY_APPROVED = "partially_approved"
+    REJECTED = "rejected"
+    CLOSED = "closed"
+
+
+class ClaimPriority(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    URGENT = "urgent"
+
+
+class ClaimCreate(BaseModel):
+    employee_id: str
+    claim_type: ClaimType
+    title: str
+    description: str
+    claimed_amount: float = Field(..., gt=0)
+    incident_date: datetime
+    priority: ClaimPriority = ClaimPriority.MEDIUM
+    supporting_docs: Optional[List[str]] = []
+    related_commission_id: Optional[str] = None
+    related_payroll_id: Optional[str] = None
+
+
+class ClaimResponse(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    claim_type: ClaimType
+    title: str
+    description: str
+    claimed_amount: float
+    approved_amount: Optional[float]
+    incident_date: datetime
+    priority: ClaimPriority
+    status: ClaimStatus
+    supporting_docs: List[str]
+    related_commission_id: Optional[str]
+    related_payroll_id: Optional[str]
+    assigned_to: Optional[str]
+    resolution_notes: Optional[str]
+    resolved_at: Optional[datetime]
+    created_at: datetime
+    updated_at: datetime
+
+
+class ClaimResolution(BaseModel):
+    approved_amount: Optional[float] = None
+    resolution_notes: str
+    status: ClaimStatus
+
+
+class ClaimAnalytics(BaseModel):
+    total_claims: int
+    open_claims: int
+    approved_claims: int
+    rejected_claims: int
+    total_claimed_amount: float
+    total_approved_amount: float
+    by_type: Dict[str, int]
+    by_priority: Dict[str, int]
+    average_resolution_days: float
+
+
+# ========== Tax Schemas ==========
+
+class TaxRegime(str, Enum):
+    OLD = "old"
+    NEW = "new"
+
+
+class TaxSlabCreate(BaseModel):
+    regime: TaxRegime
+    min_income: float = Field(..., ge=0)
+    max_income: Optional[float] = None
+    rate: float = Field(..., ge=0, le=100)
+    surcharge_rate: float = Field(0, ge=0, le=100)
+    cess_rate: float = Field(4.0, ge=0, le=100)
+    financial_year: str
+
+
+class TaxSlabResponse(BaseModel):
+    id: str
+    regime: TaxRegime
+    min_income: float
+    max_income: Optional[float]
+    rate: float
+    surcharge_rate: float
+    cess_rate: float
+    financial_year: str
+    created_at: datetime
+
+
+class TaxComputationRequest(BaseModel):
+    employee_id: str
+    financial_year: str
+    regime: TaxRegime = TaxRegime.NEW
+    gross_annual_income: float = Field(..., gt=0)
+    hra_exemption: float = Field(0, ge=0)
+    section_80c: float = Field(0, ge=0)
+    section_80d: float = Field(0, ge=0)
+    section_80ccd: float = Field(0, ge=0)
+    other_deductions: float = Field(0, ge=0)
+    tds_already_deducted: float = Field(0, ge=0)
+
+
+class TaxComputationResponse(BaseModel):
+    employee_id: str
+    financial_year: str
+    regime: TaxRegime
+    gross_annual_income: float
+    total_exemptions: float
+    taxable_income: float
+    basic_tax: float
+    surcharge: float
+    cess: float
+    total_tax_liability: float
+    tds_already_deducted: float
+    balance_tax_payable: float
+    monthly_tds: float
+    effective_tax_rate: float
+    computed_at: datetime
+
+
+class Form16Summary(BaseModel):
+    employee_id: str
+    employee_name: str
+    employee_pan: Optional[str]
+    financial_year: str
+    employer_name: str
+    gross_salary: float
+    exempt_allowances: float
+    net_salary: float
+    deductions_80c: float
+    deductions_80d: float
+    other_deductions: float
+    taxable_income: float
+    total_tax: float
+    tds_deducted: float
+    balance_payable: float
+    generated_at: datetime
+
+
+# ========== Onboarding & Offboarding Schemas ==========
+
+class OnboardingStatus(str, Enum):
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    DOCUMENTS_SUBMITTED = "documents_submitted"
+    VERIFICATION_PENDING = "verification_pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+
+class OffboardingStatus(str, Enum):
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    ASSETS_RETURNED = "assets_returned"
+    CLEARANCE_PENDING = "clearance_pending"
+    APPROVED = "approved"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+
+class EPFOStatus(str, Enum):
+    NOT_REGISTERED = "not_registered"
+    REGISTERED = "registered"
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    WITHDRAWN = "withdrawn"
+    TRANSFERRED = "transferred"
+
+
+class EPFODetails(BaseModel):
+    uan_number: Optional[str] = None
+    pf_account_number: Optional[str] = None
+    establishment_id: Optional[str] = None
+    epfo_office: Optional[str] = None
+    date_of_joining: Optional[datetime] = None
+    date_of_exit: Optional[datetime] = None
+    pf_contribution_rate: float = 12.0
+    pension_contribution_rate: float = 8.33
+    status: EPFOStatus = EPFOStatus.NOT_REGISTERED
+    nomination_details: Optional[Dict[str, Any]] = None
+
+
+class ESIDetails(BaseModel):
+    esi_number: Optional[str] = None
+    establishment_id: Optional[str] = None
+    esi_office: Optional[str] = None
+    date_of_joining: Optional[datetime] = None
+    date_of_exit: Optional[datetime] = None
+    esi_contribution_rate: float = 1.0
+    status: EPFOStatus = EPFOStatus.NOT_REGISTERED
+    ip_number: Optional[str] = None
+
+
+class BankAccountDetails(BaseModel):
+    account_number: str
+    bank_name: str
+    branch_name: str
+    ifsc_code: str
+    account_type: str = "savings"
+    is_primary: bool = True
+
+
+class DocumentType(str, Enum):
+    AADHAR_CARD = "aadhar_card"
+    PAN_CARD = "pan_card"
+    PASSPORT = "passport"
+    DRIVING_LICENSE = "driving_license"
+    VOTER_ID = "voter_id"
+    EDUCATION_CERTIFICATE = "education_certificate"
+    EXPERIENCE_CERTIFICATE = "experience_certificate"
+    RELIEVING_LETTER = "relieving_letter"
+    SALARY_SLIP = "salary_slip"
+    PHOTOGRAPH = "photograph"
+    ADDRESS_PROOF = "address_proof"
+    OTHER = "other"
+
+
+class DocumentSubmission(BaseModel):
+    document_type: DocumentType
+    document_url: str
+    submitted_at: datetime = Field(default_factory=datetime.utcnow)
+    verified: bool = False
+    verified_by: Optional[str] = None
+    verified_at: Optional[datetime] = None
+    rejection_reason: Optional[str] = None
+
+
+class OnboardingChecklist(BaseModel):
+    task_name: str
+    description: Optional[str] = None
+    completed: bool = False
+    completed_at: Optional[datetime] = None
+    completed_by: Optional[str] = None
+    due_date: Optional[datetime] = None
+
+
+class EmployeeOnboardingCreate(BaseModel):
+    employee_id: str
+    employee_name: str
+    email: str
+    phone_number: str
+    designation: str
+    department: str
+    reporting_manager_id: Optional[str] = None
+    date_of_joining: datetime
+    employment_type: str = "full_time"
+    work_location: str
+    salary_offered: float
+    epfo_details: Optional[EPFODetails] = None
+    esi_details: Optional[ESIDetails] = None
+    bank_account: BankAccountDetails
+    documents: List[DocumentSubmission] = []
+    checklist: List[OnboardingChecklist] = []
+    notes: Optional[str] = None
+
+
+class EmployeeOnboardingUpdate(BaseModel):
+    status: Optional[OnboardingStatus] = None
+    reporting_manager_id: Optional[str] = None
+    epfo_details: Optional[EPFODetails] = None
+    esi_details: Optional[ESIDetails] = None
+    bank_account: Optional[BankAccountDetails] = None
+    documents: Optional[List[DocumentSubmission]] = None
+    checklist: Optional[List[OnboardingChecklist]] = None
+    notes: Optional[str] = None
+    rejection_reason: Optional[str] = None
+
+
+class EmployeeOnboardingResponse(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    email: str
+    phone_number: str
+    designation: str
+    department: str
+    reporting_manager_id: Optional[str] = None
+    reporting_manager_name: Optional[str] = None
+    date_of_joining: datetime
+    employment_type: str
+    work_location: str
+    salary_offered: float
+    epfo_details: Optional[EPFODetails] = None
+    esi_details: Optional[ESIDetails] = None
+    bank_account: BankAccountDetails
+    documents: List[DocumentSubmission] = []
+    checklist: List[OnboardingChecklist] = []
+    status: OnboardingStatus
+    notes: Optional[str] = None
+    rejection_reason: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    completed_at: Optional[datetime] = None
+
+
+class EmployeeOffboardingCreate(BaseModel):
+    employee_id: str
+    employee_name: str
+    email: str
+    phone_number: str
+    designation: str
+    department: str
+    date_of_resignation: datetime
+    last_working_day: datetime
+    reason_for_leaving: str
+    exit_type: str = "resignation"
+    is_eligible_rehire: bool = True
+    handover_to: Optional[str] = None
+    settlement_amount: Optional[float] = None
+    pending_leaves: int = 0
+    encashable_leaves: int = 0
+    assets_to_return: List[str] = []
+    clearance_checklist: List[OnboardingChecklist] = []
+    notes: Optional[str] = None
+
+
+class EmployeeOffboardingUpdate(BaseModel):
+    status: Optional[OffboardingStatus] = None
+    last_working_day: Optional[datetime] = None
+    reason_for_leaving: Optional[str] = None
+    is_eligible_rehire: Optional[bool] = None
+    handover_to: Optional[str] = None
+    settlement_amount: Optional[float] = None
+    assets_to_return: Optional[List[str]] = None
+    clearance_checklist: Optional[List[OnboardingChecklist]] = None
+    notes: Optional[str] = None
+    rejection_reason: Optional[str] = None
+
+
+class EmployeeOffboardingResponse(BaseModel):
+    id: str
+    employee_id: str
+    employee_name: str
+    email: str
+    phone_number: str
+    designation: str
+    department: str
+    date_of_resignation: datetime
+    last_working_day: datetime
+    reason_for_leaving: str
+    exit_type: str
+    is_eligible_rehire: bool
+    handover_to: Optional[str] = None
+    handover_to_name: Optional[str] = None
+    settlement_amount: Optional[float] = None
+    pending_leaves: int
+    encashable_leaves: int
+    assets_to_return: List[str] = []
+    clearance_checklist: List[OnboardingChecklist] = []
+    status: OffboardingStatus
+    notes: Optional[str] = None
+    rejection_reason: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    completed_at: Optional[datetime] = None
+
+
+class OnboardingAnalytics(BaseModel):
+    total_onboardings: int
+    pending_onboardings: int
+    in_progress_onboardings: int
+    completed_onboardings: int
+    rejected_onboardings: int
+    average_onboarding_days: float
+    by_department: Dict[str, int]
+    by_status: Dict[str, int]
+    monthly_trend: List[Dict[str, Any]]
+
+
+class OffboardingAnalytics(BaseModel):
+    total_offboardings: int
+    pending_offboardings: int
+    in_progress_offboardings: int
+    completed_offboardings: int
+    average_tenure_days: float
+    attrition_rate: float
+    by_department: Dict[str, int]
+    by_reason: Dict[str, int]
+    by_exit_type: Dict[str, int]
+    monthly_trend: List[Dict[str, Any]]
+
+
+# ========== Easy Property Onboarding Schemas ==========
+
+class PropertyOnboardingSource(str, Enum):
+    MANUAL = "manual"
+    URL_IMPORT = "url_import"
+    TEXT_IMPORT = "text_import"
+    BULK_UPLOAD = "bulk_upload"
+
+
+class PropertyOnboardingStatus(str, Enum):
+    DRAFT = "draft"
+    PENDING_REVIEW = "pending_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    PUBLISHED = "published"
+    ARCHIVED = "archived"
+
+
+class QuickPropertyCreate(BaseModel):
+    """Simplified property creation for easy onboarding"""
+    title: str
+    property_type: PropertyType
+    city: str
+    state: str
+    price: float
+    area: float
+    area_unit: str = "sq_ft"
+    bedrooms: Optional[int] = None
+    bathrooms: Optional[int] = None
+    description: Optional[str] = None
+    source_url: Optional[str] = None
+    source_site: Optional[str] = None
+    images: List[str] = []
+    contact_name: str
+    contact_phone: str
+    contact_email: EmailStr
+    is_builder_property: bool = False
+    builder_name: Optional[str] = None
+    amenities: List[str] = []
+    notes: Optional[str] = None
+
+
+class URLPropertyImport(BaseModel):
+    """Import property from external URL"""
+    url: str
+    site: str = "magicbricks"
+    contact_name: str
+    contact_phone: str
+    contact_email: EmailStr
+    override_data: Optional[Dict[str, Any]] = None
+
+
+class TextPropertyImport(BaseModel):
+    """Extract property from text description"""
+    text: str
+    city: str = "Mumbai"
+    contact_name: str
+    contact_phone: str
+    contact_email: EmailStr
+    override_data: Optional[Dict[str, Any]] = None
+
+
+class BulkPropertyImport(BaseModel):
+    """Bulk import properties from CSV/JSON data"""
+    properties: List[Dict[str, Any]]
+    source: PropertyOnboardingSource = PropertyOnboardingSource.BULK_UPLOAD
+
+
+class PropertyOnboardingUpdate(BaseModel):
+    """Update onboarding property"""
+    status: Optional[PropertyOnboardingStatus] = None
+    rejection_reason: Optional[str] = None
+    review_notes: Optional[str] = None
+    published_at: Optional[datetime] = None
+
+
+class PropertyOnboardingResponse(BaseModel):
+    """Response for property onboarding"""
+    id: str
+    original_property_id: Optional[str] = None
+    source: PropertyOnboardingSource
+    status: PropertyOnboardingStatus
+    property_data: Dict[str, Any]
+    scraped_data: Optional[Dict[str, Any]] = None
+    extracted_data: Optional[Dict[str, Any]] = None
+    price_comparison: Optional[Dict[str, Any]] = None
+    contact_name: str
+    contact_phone: str
+    contact_email: str
+    submitted_by: str
+    reviewed_by: Optional[str] = None
+    rejection_reason: Optional[str] = None
+    review_notes: Optional[str] = None
+    published_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class PropertyOnboardingAnalytics(BaseModel):
+    """Analytics for property onboarding"""
+    total_onboardings: int
+    by_source: Dict[str, int]
+    by_status: Dict[str, int]
+    by_property_type: Dict[str, int]
+    by_city: Dict[str, int]
+    average_processing_time_hours: float
+    auto_published_count: int
+    manual_review_count: int
+    monthly_trend: List[Dict[str, Any]]
 

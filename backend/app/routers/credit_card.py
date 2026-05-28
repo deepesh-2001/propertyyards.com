@@ -16,6 +16,7 @@ from app.schemas import (
     CashbackResponse,
     CreditCardRecommendation,
     CreditCardComparison,
+    BestCreditCardCashback,
     PointsRedemptionCreate,
     PointsRedemptionResponse,
     RewardAnalytics,
@@ -408,6 +409,35 @@ async def get_best_card_for_category(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/best-cashback", response_model=List[BestCreditCardCashback])
+async def get_best_credit_cards_for_cashback(
+    spend_amount: float = 2000,
+    category: Optional[RewardCategory] = None,
+    cashback_rate: float = 1.0,
+    limit: int = 3,
+    database=Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        if spend_amount <= 0:
+            raise HTTPException(status_code=400, detail="spend_amount must be greater than 0")
+        if cashback_rate < 0:
+            raise HTTPException(status_code=400, detail="cashback_rate must be greater than or equal to 0")
+        if limit <= 0:
+            raise HTTPException(status_code=400, detail="limit must be greater than 0")
+        
+        result = credit_card_comparator.get_best_cards_for_cashback(
+            spend_amount=spend_amount,
+            category=category,
+            cashback_rate=cashback_rate
+        )
+        return [BestCreditCardCashback(**card) for card in result[:limit]]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/recommendations")
 async def get_card_recommendations(
     monthly_spend: float = 2000,
@@ -444,9 +474,9 @@ async def get_reward_analytics(
     try:
         analytics = await credit_card_manager.get_reward_analytics(
             user_id=user_id,
+            database=database,
             start_date=start_date,
-            end_date=end_date,
-            database=database
+            end_date=end_date
         )
         return RewardAnalytics(**analytics)
     except Exception as e:
@@ -532,8 +562,8 @@ async def get_total_cashback_returns(
         card_ids = [str(c["_id"]) for c in cards]
         
         cashbacks = await database.cashbacks.find({"credit_card_id": {"$in": card_ids}}).to_list(length=1000)
-        total_returns = credit_card_manager._calculate_total_returns(user_id, cards, cashbacks, database)
+        total_returns = await credit_card_manager._calculate_total_returns(user_id, cards, cashbacks, database)
         
         return total_returns
     except Exception as e:
-        raise HTTPException(status_code=500, detail(str(e))
+        raise HTTPException(status_code=500, detail=str(e))

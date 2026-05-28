@@ -115,7 +115,40 @@ async def create_indexes():
         await database.job_postings.create_index([("status", 1)])
         await database.job_postings.create_index([("department", 1)])
         await database.job_postings.create_index([("created_at", -1)])
-        
+
+        # Employee onboarding collection indexes
+        await database.employee_onboardings.create_index([("employee_id", 1)])
+        await database.employee_onboardings.create_index([("status", 1)])
+        await database.employee_onboardings.create_index([("department", 1)])
+        await database.employee_onboardings.create_index([("created_at", -1)])
+
+        # Employee offboarding collection indexes
+        await database.employee_offboardings.create_index([("employee_id", 1)])
+        await database.employee_offboardings.create_index([("status", 1)])
+        await database.employee_offboardings.create_index([("department", 1)])
+        await database.employee_offboardings.create_index([("created_at", -1)])
+
+        # EPFO records collection indexes
+        await database.epfo_records.create_index([("employee_id", 1)], unique=True)
+        await database.epfo_records.create_index([("uan_number", 1)])
+        await database.epfo_records.create_index([("status", 1)])
+
+        # ESI records collection indexes
+        await database.esi_records.create_index([("employee_id", 1)], unique=True)
+        await database.esi_records.create_index([("esi_number", 1)])
+        await database.esi_records.create_index([("status", 1)])
+
+        # Property onboarding collection indexes
+        await database.property_onboardings.create_index([("submitted_by", 1)])
+        await database.property_onboardings.create_index([("source", 1)])
+        await database.property_onboardings.create_index([("status", 1)])
+        await database.property_onboardings.create_index([("property_data.city", 1)])
+        await database.property_onboardings.create_index([("created_at", -1)])
+
+        # Feature flags collection indexes
+        await database.feature_flags.create_index([("key", 1)], unique=True)
+        await database.feature_flags.create_index([("is_enabled", 1)])
+
         logger.info("Database indexes created successfully")
         
     except Exception as e:

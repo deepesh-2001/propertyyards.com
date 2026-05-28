@@ -11,7 +11,7 @@ import sys
 from app.config import settings
 from app.database import init_database, close_database
 from app.cache import init_cache, close_cache
-from app.routers import auth, users, properties, inquiries, admin, crm, referral, access, loan_calculator, contact, notifications, chatbot, brokers, reports, monitoring, recruitment, payments, self_healing, salary, commission, prediction, feedback, credit_card
+from app.routers import auth, users, properties, inquiries, admin, crm, referral, access, loan_calculator, contact, notifications, chatbot, brokers, reports, monitoring, recruitment, payments, self_healing, salary, commission, prediction, feedback, credit_card, reimbursement, claims, tax, onboarding, scraper, property_onboarding, feature_flags
 from app import health, cron
 from app.access import AccessControl
 
@@ -108,6 +108,13 @@ app.include_router(commission.router)
 app.include_router(prediction.router)
 app.include_router(feedback.router)
 app.include_router(credit_card.router)
+app.include_router(reimbursement.router)
+app.include_router(claims.router)
+app.include_router(tax.router)
+app.include_router(onboarding.router)
+app.include_router(scraper.router)
+app.include_router(property_onboarding.router)
+app.include_router(feature_flags.router)
 app.include_router(health.router)
 
 

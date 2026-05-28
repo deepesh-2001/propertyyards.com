@@ -138,25 +138,22 @@ class CreditCardManager:
             
             # Update card points balance
             transaction_type = transaction_data["transaction_type"]
-            if transaction_type == RewardTransactionType.EARNED or transaction_type == RewardTransactionType.BONUS:
-                new_balance = card["points_balance"] + transaction_data["points"]
-                new_earned = card["total_points_earned"] + transaction_data["points"]
+            new_earned = card["total_points_earned"]
+            new_redeemed = card["total_points_redeemed"]
+            new_balance = card["points_balance"]
+            if transaction_type in (RewardTransactionType.EARNED, RewardTransactionType.BONUS):
+                new_balance += transaction_data["points"]
+                new_earned += transaction_data["points"]
             elif transaction_type == RewardTransactionType.REDEEMED:
-                new_balance = card["points_balance"] - transaction_data["points"]
-                new_redeemed = card["total_points_redeemed"] + transaction_data["points"]
-            else:
-                new_balance = card["points_balance"]
-                new_earned = card["total_points_earned"]
-                new_redeemed = card["total_points_redeemed"]
+                new_balance -= transaction_data["points"]
+                new_redeemed += transaction_data["points"]
             
             update_data = {
                 "points_balance": new_balance,
                 "total_points_earned": new_earned,
+                "total_points_redeemed": new_redeemed,
                 "updated_at": datetime.utcnow()
             }
-            
-            if transaction_type == RewardTransactionType.REDEEMED:
-                update_data["total_points_redeemed"] = new_redeemed
             
             await database.credit_cards.update_one(
                 {"_id": transaction_data["credit_card_id"]},
@@ -207,19 +204,8 @@ class CreditCardManager:
             result = await database.cashbacks.insert_one(cashback)
             cashback["id"] = str(result.inserted_id)
             
-            # Update card points balance
-            await database.credit_cards.update_one(
-                {"_id": cashback_data["credit_card_id"]},
-                {
-                    "$inc": {
-                        "points_balance": -points_needed,
-                        "total_points_redeemed": points_needed
-                    },
-                    "$set": {"updated_at": datetime.utcnow()}
-                }
-            )
-            
-            # Record redemption transaction
+            # Debit points and record the redemption transaction atomically through the helper
+            # (record_reward_transaction already updates the card balance, so we do NOT also $inc here)
             await self.record_reward_transaction({
                 "credit_card_id": cashback_data["credit_card_id"],
                 "transaction_type": RewardTransactionType.REDEEMED,
@@ -228,7 +214,30 @@ class CreditCardManager:
                 "category": cashback_data["category"],
                 "description": f"Cashback redemption: {cashback_data.get('description', '')}"
             }, database)
-            
+
+            # Create commission entry for credit card cashback
+            from app.schemas import CommissionType, CommissionStatus
+            commission = {
+                "recipient_id": card["user_id"],
+                "recipient_type": "user",
+                "recipient_name": card.get("user_name", ""),
+                "commission_rule_id": None,
+                "rule_name": "Credit Card Cashback Commission",
+                "deal_id": str(result.inserted_id),
+                "deal_type": "credit_card_cashback",
+                "deal_amount": actual_cashback,
+                "calculated_amount": actual_cashback,
+                "currency": "INR",
+                "status": CommissionStatus.PENDING,
+                "due_date": datetime.utcnow() + timedelta(days=30),
+                "notes": f"Cashback from {card['card_name']} - {cashback_data.get('description', '')}",
+                "approved_by": None,
+                "approved_at": None,
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            }
+            await database.commissions.insert_one(commission)
+
             return cashback
             
         except Exception as e:
@@ -238,9 +247,9 @@ class CreditCardManager:
     async def get_reward_analytics(
         self,
         user_id: str,
+        database,
         start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        database
+        end_date: Optional[datetime] = None
     ) -> Dict[str, Any]:
         """Get reward analytics for a user"""
         try:
@@ -252,20 +261,21 @@ class CreditCardManager:
             points_balance = sum(c["points_balance"] for c in cards)
             
             # Get transactions
-            query = {
-                "credit_card_id": {"$in": [str(c["_id"]) for c in cards]}
-            }
+            card_ids = [str(c["_id"]) for c in cards]
+            tx_query: Dict[str, Any] = {"credit_card_id": {"$in": card_ids}}
+            date_filter: Dict[str, Any] = {}
             if start_date:
-                query["transaction_date"] = {"$gte": start_date}
+                date_filter["$gte"] = start_date
             if end_date:
-                query["transaction_date"] = query.get("transaction_date", {})
-                query["transaction_date"]["$lte"] = end_date
+                date_filter["$lte"] = end_date
+            if date_filter:
+                tx_query["transaction_date"] = date_filter
             
-            transactions = await database.reward_transactions.find(query).to_list(length=1000)
+            transactions = await database.reward_transactions.find(tx_query).to_list(length=1000)
             
             # Calculate total cashback earned
             cashbacks = await database.cashbacks.find({
-                "credit_card_id": {"$in": [str(c["_id"]) for c in cards]}
+                "credit_card_id": {"$in": card_ids}
             }).to_list(length=1000)
             total_cashback_earned = sum(c["points_value"] for c in cashbacks)
             
@@ -310,7 +320,7 @@ class CreditCardManager:
             yearly_returns = self._calculate_yearly_cashback_returns(cashbacks)
             
             # Calculate total returns
-            total_returns = self._calculate_total_returns(user_id, cards, cashbacks, database)
+            total_returns = await self._calculate_total_returns(user_id, cards, cashbacks, database)
             
             return {
                 "total_points_earned": total_points_earned,
@@ -660,6 +670,44 @@ class CreditCardComparator:
             
         except Exception as e:
             logger.error(f"Best card for category error: {e}")
+            raise
+    
+    def get_best_cards_for_cashback(
+        self,
+        spend_amount: float,
+        category: Optional[RewardCategory] = None,
+        cashback_rate: float = 1.0
+    ) -> List[Dict[str, Any]]:
+        try:
+            scored_cards = []
+            
+            for card in self.sample_cards:
+                category_multiplier = self.calculator.category_multipliers.get(category, 1.0)
+                category_match = category in card["reward_categories"] if category else True
+                effective_reward_rate = card["reward_rate"] * (category_multiplier if category_match else 1.0)
+                estimated_points = int(spend_amount * effective_reward_rate)
+                estimated_cashback = self.calculator.calculate_cashback(estimated_points, cashback_rate)
+                net_cashback_after_fee = estimated_cashback - card["annual_fee"]
+                match_score = max(0, min(100, (effective_reward_rate * 10) + (30 if category_match else 0) - (card["annual_fee"] / 20)))
+                
+                scored_cards.append({
+                    "card_name": card["card_name"],
+                    "bank_name": card["bank_name"],
+                    "card_type": card["card_type"],
+                    "tier": card["tier"],
+                    "reward_rate": card["reward_rate"],
+                    "reward_categories": card["reward_categories"],
+                    "estimated_points": estimated_points,
+                    "estimated_cashback": estimated_cashback,
+                    "net_cashback_after_fee": net_cashback_after_fee,
+                    "match_score": match_score
+                })
+            
+            scored_cards.sort(key=lambda x: (x["net_cashback_after_fee"], x["estimated_points"], x["match_score"]), reverse=True)
+            return scored_cards
+            
+        except Exception as e:
+            logger.error(f"Best cards for cashback error: {e}")
             raise
 
 

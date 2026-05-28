@@ -21,6 +21,7 @@ from app.schemas import (
 )
 from app.commission import commission_processor
 from app.auth import get_current_user
+from app.cache import get_from_cache, set_in_cache, delete_from_cache, generate_cache_key, invalidate_cache_pattern
 
 router = APIRouter(prefix="/api/commissions", tags=["commissions"])
 
@@ -40,10 +41,13 @@ async def create_commission_rule(
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow()
         })
-        
+
         result = await database.commission_rules.insert_one(rule_data)
         rule_data["id"] = str(result.inserted_id)
-        
+
+        # Invalidate commission rules cache
+        await invalidate_cache_pattern("commission_rules:*")
+
         return CommissionRuleResponse(**rule_data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -74,19 +78,28 @@ async def get_commission_rules(
     current_user: dict = Depends(get_current_user)
 ):
     """Get all commission rules"""
+    # Check cache
+    cache_key = generate_cache_key("commission_rules", commission_type or "all", is_active)
+    cached_result = await get_from_cache(cache_key)
+    if cached_result:
+        return [CommissionRuleResponse(**r) for r in cached_result]
+
     query = {}
     if commission_type:
         query["commission_type"] = commission_type
     if is_active is not None:
         query["is_active"] = is_active
-    
+
     cursor = database.commission_rules.find(query).sort("created_at", -1)
     rules = await cursor.to_list(length=100)
-    
+
     for rule in rules:
         rule["id"] = str(rule["_id"])
         del rule["_id"]
-    
+
+    # Cache the result (15 minutes - rules don't change often)
+    await set_in_cache(cache_key, rules, ttl=900)
+
     return [CommissionRuleResponse(**r) for r in rules]
 
 
@@ -161,6 +174,32 @@ async def calculate_loan_commission(
             deal_id=loan_id,
             deal_type="loan",
             deal_amount=loan_amount,
+            recipient_id=recipient_id,
+            recipient_type=recipient_type,
+            commission_rule_id=commission_rule_id,
+            database=database
+        )
+        return commission
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/credit-card-cashback")
+async def calculate_credit_card_cashback_commission(
+    cashback_id: str,
+    cashback_amount: float,
+    recipient_id: str,
+    recipient_type: str,
+    commission_rule_id: str,
+    database=Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Calculate commission for credit card cashback"""
+    try:
+        commission = await commission_processor.calculate_deal_commission(
+            deal_id=cashback_id,
+            deal_type="credit_card_cashback",
+            deal_amount=cashback_amount,
             recipient_id=recipient_id,
             recipient_type=recipient_type,
             commission_rule_id=commission_rule_id,
@@ -316,12 +355,27 @@ async def get_commission_analytics(
 ):
     """Get commission analytics"""
     try:
+        # Check cache (5 minutes for analytics)
+        cache_key = generate_cache_key(
+            "commission_analytics",
+            recipient_id or "all",
+            start_date.isoformat() if start_date else "none",
+            end_date.isoformat() if end_date else "none"
+        )
+        cached_result = await get_from_cache(cache_key)
+        if cached_result:
+            return CommissionAnalytics(**cached_result)
+
         analytics = await commission_processor.get_commission_analytics(
+            database=database,
             recipient_id=recipient_id,
             start_date=start_date,
-            end_date=end_date,
-            database=database
+            end_date=end_date
         )
+
+        # Cache the result
+        await set_in_cache(cache_key, analytics, ttl=300)
+
         return CommissionAnalytics(**analytics)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -336,16 +390,25 @@ async def get_monthly_returns(
 ):
     """Get monthly commission returns"""
     try:
+        # Check cache (10 minutes - monthly returns don't change often)
+        cache_key = generate_cache_key("monthly_returns", recipient_id or "all", year or "current")
+        cached_result = await get_from_cache(cache_key)
+        if cached_result:
+            return cached_result
+
         query = {}
         if recipient_id:
             query["recipient_id"] = recipient_id
         if year:
-            query["created_at"] = {"$gte": datetime(year, 1, 1), "$lte": datetime(year, 12, 31)}
-        
+            query["created_at"] = {"$gte": datetime(year, 1, 1), "$lte": datetime(year, 12, 31, 23, 59, 59)}
+
         commissions = await database.commissions.find(query).to_list(length=1000)
-        monthly_returns = await commission_processor._calculate_monthly_returns(commissions, database)
-        
-        return {"monthly_returns": monthly_returns}
+        monthly_returns = commission_processor._calculate_monthly_returns(commissions)
+
+        result = {"monthly_returns": monthly_returns}
+        await set_in_cache(cache_key, result, ttl=600)
+
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -359,16 +422,25 @@ async def get_quarterly_returns(
 ):
     """Get quarterly commission returns"""
     try:
+        # Check cache (10 minutes)
+        cache_key = generate_cache_key("quarterly_returns", recipient_id or "all", year or "current")
+        cached_result = await get_from_cache(cache_key)
+        if cached_result:
+            return cached_result
+
         query = {}
         if recipient_id:
             query["recipient_id"] = recipient_id
         if year:
-            query["created_at"] = {"$gte": datetime(year, 1, 1), "$lte": datetime(year, 12, 31)}
-        
+            query["created_at"] = {"$gte": datetime(year, 1, 1), "$lte": datetime(year, 12, 31, 23, 59, 59)}
+
         commissions = await database.commissions.find(query).to_list(length=1000)
-        quarterly_returns = await commission_processor._calculate_quarterly_returns(commissions, database)
-        
-        return {"quarterly_returns": quarterly_returns}
+        quarterly_returns = commission_processor._calculate_quarterly_returns(commissions)
+
+        result = {"quarterly_returns": quarterly_returns}
+        await set_in_cache(cache_key, result, ttl=600)
+
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -381,14 +453,23 @@ async def get_yearly_returns(
 ):
     """Get yearly commission returns"""
     try:
+        # Check cache (15 minutes - yearly returns change slowly)
+        cache_key = generate_cache_key("yearly_returns", recipient_id or "all")
+        cached_result = await get_from_cache(cache_key)
+        if cached_result:
+            return cached_result
+
         query = {}
         if recipient_id:
             query["recipient_id"] = recipient_id
-        
+
         commissions = await database.commissions.find(query).to_list(length=1000)
-        yearly_returns = await commission_processor._calculate_yearly_returns(commissions, database)
-        
-        return {"yearly_returns": yearly_returns}
+        yearly_returns = commission_processor._calculate_yearly_returns(commissions)
+
+        result = {"yearly_returns": yearly_returns}
+        await set_in_cache(cache_key, result, ttl=900)
+
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

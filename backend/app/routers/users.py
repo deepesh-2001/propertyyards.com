@@ -8,7 +8,7 @@ from app.database import get_db
 from app.models import User, Property, Inquiry, Wishlist
 from app.schemas import UserResponse, UserUpdate, UserProfileResponse, PaginatedResponse
 from app.auth import decode_token
-from app.cache import get_from_cache, set_in_cache, delete_from_cache, generate_cache_key
+from app.cache import get_from_cache, set_in_cache, delete_from_cache, generate_cache_key, invalidate_cache_pattern
 import logging
 from typing import Optional
 

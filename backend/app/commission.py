@@ -3,7 +3,7 @@ Commission Tracking Module
 Handles commission calculations, rules, and payouts
 """
 from typing import Dict, Any, Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 
 from app.schemas import (
@@ -29,7 +29,8 @@ class CommissionCalculator:
             CommissionType.PERFORMANCE: 0.0,  # Calculated based on targets
             CommissionType.TARGET_BONUS: 0.0,  # Calculated based on targets
             CommissionType.BUILDER_PROPERTY: 3.0,  # 3% of property value for builder properties
-            CommissionType.LOAN_COMMISSION: 0.5  # 0.5% of loan amount
+            CommissionType.LOAN_COMMISSION: 0.5,
+            CommissionType.CREDIT_CARD_CASHBACK: 1.0
         }
     
     def calculate_commission(
@@ -154,10 +155,12 @@ class CommissionProcessor:
             recipient_name = ""
             if recipient_type == "employee":
                 employee = await database.users.find_one({"_id": recipient_id})
-                recipient_name = f"{employee.get('first_name', '')} {employee.get('last_name', '')}"
+                if employee:
+                    recipient_name = f"{employee.get('first_name', '')} {employee.get('last_name', '')}"
             elif recipient_type == "broker":
                 broker = await database.brokers.find_one({"_id": recipient_id})
-                recipient_name = broker.get("name", "")
+                if broker:
+                    recipient_name = broker.get("name", "")
             
             # Create commission record
             commission = {
@@ -258,36 +261,45 @@ class CommissionProcessor:
             
             result = await database.commission_payouts.insert_one(payout)
             payout["id"] = str(result.inserted_id)
+            payout_id = result.inserted_id
             
-            # Update commission statuses
-            await database.commissions.update_many(
-                {"_id": {"$in": commission_ids}},
-                {
-                    "$set": {
-                        "status": CommissionStatus.PAID,
-                        "paid_date": datetime.utcnow(),
-                        "payment_method": payment_method_id,
-                        "transaction_id": str(result.inserted_id),
-                        "updated_at": datetime.utcnow()
+            try:
+                # Update commission statuses
+                await database.commissions.update_many(
+                    {"_id": {"$in": commission_ids}},
+                    {
+                        "$set": {
+                            "status": CommissionStatus.PAID,
+                            "paid_date": datetime.utcnow(),
+                            "payment_method": payment_method_id,
+                            "transaction_id": str(payout_id),
+                            "updated_at": datetime.utcnow()
+                        }
                     }
-                }
-            )
-            
-            # Update payout status
-            await database.commission_payouts.update_one(
-                {"_id": result.inserted_id},
-                {
-                    "$set": {
-                        "status": "completed",
-                        "processed_at": datetime.utcnow(),
-                        "transaction_id": str(result.inserted_id)
+                )
+                
+                # Send notifications (non-fatal)
+                for commission in commissions:
+                    await self._send_investment_notification(commission, database)
+                
+                # Mark payout completed only after all updates succeed
+                await database.commission_payouts.update_one(
+                    {"_id": payout_id},
+                    {
+                        "$set": {
+                            "status": "completed",
+                            "processed_at": datetime.utcnow(),
+                            "transaction_id": str(payout_id)
+                        }
                     }
-                }
-            )
-            
-            # Send investment notification for each commission
-            for commission in commissions:
-                await self._send_investment_notification(commission, database)
+                )
+            except Exception:
+                # Roll payout back to failed state so it can be retried
+                await database.commission_payouts.update_one(
+                    {"_id": payout_id},
+                    {"$set": {"status": "failed", "processed_at": datetime.utcnow()}}
+                )
+                raise
             
             return payout
             
@@ -349,21 +361,23 @@ class CommissionProcessor:
     
     async def get_commission_analytics(
         self,
+        database,
         recipient_id: Optional[str] = None,
         start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        database
+        end_date: Optional[datetime] = None
     ) -> Dict[str, Any]:
         """Get commission analytics"""
         try:
             query = {}
             if recipient_id:
                 query["recipient_id"] = recipient_id
+            date_filter: Dict[str, Any] = {}
             if start_date:
-                query["created_at"] = {"$gte": start_date}
+                date_filter["$gte"] = start_date
             if end_date:
-                query["created_at"] = query.get("created_at", {})
-                query["created_at"]["$lte"] = end_date
+                date_filter["$lte"] = end_date
+            if date_filter:
+                query["created_at"] = date_filter
             
             commissions = await database.commissions.find(query).to_list(length=1000)
             
@@ -373,29 +387,28 @@ class CommissionProcessor:
             
             average_commission = total_commissions / len(commissions) if commissions else 0
             
-            # Commission by type
-            commission_by_type = {}
+            # Commission by type – bulk fetch rules to avoid N+1 queries
+            rule_ids = list({c["commission_rule_id"] for c in commissions if c.get("commission_rule_id")})
+            rules_cursor = database.commission_rules.find({"_id": {"$in": rule_ids}})
+            rules_by_id = {str(r["_id"]): r async for r in rules_cursor}
+            commission_by_type: Dict[str, float] = {}
             for c in commissions:
-                rule = await database.commission_rules.find_one({"_id": c["commission_rule_id"]})
+                rule = rules_by_id.get(str(c.get("commission_rule_id", "")))
                 if rule:
                     commission_type = rule["commission_type"]
                     commission_by_type[commission_type] = commission_by_type.get(commission_type, 0) + c["calculated_amount"]
             
             # Top performers
-            performer_totals = {}
+            performer_totals: Dict[str, float] = {}
             for c in commissions:
                 performer_totals[c["recipient_id"]] = performer_totals.get(c["recipient_id"], 0) + c["calculated_amount"]
             
             top_performers = sorted(performer_totals.items(), key=lambda x: x[1], reverse=True)[:10]
             
-            # Monthly returns
-            monthly_returns = await self._calculate_monthly_returns(commissions, database)
-            
-            # Quarterly returns
-            quarterly_returns = await self._calculate_quarterly_returns(commissions, database)
-            
-            # Yearly returns
-            yearly_returns = await self._calculate_yearly_returns(commissions, database)
+            # Monthly / quarterly / yearly returns (sync helpers)
+            monthly_returns = self._calculate_monthly_returns(commissions)
+            quarterly_returns = self._calculate_quarterly_returns(commissions)
+            yearly_returns = self._calculate_yearly_returns(commissions)
             
             return {
                 "total_commissions": total_commissions,
@@ -415,7 +428,7 @@ class CommissionProcessor:
             logger.error(f"Commission analytics error: {e}")
             raise
     
-    async def _calculate_monthly_returns(self, commissions: List[Dict], database) -> List[Dict[str, Any]]:
+    def _calculate_monthly_returns(self, commissions: List[Dict]) -> List[Dict[str, Any]]:
         """Calculate monthly commission returns"""
         monthly_data = {}
         
@@ -445,7 +458,7 @@ class CommissionProcessor:
         
         return monthly_returns
     
-    async def _calculate_quarterly_returns(self, commissions: List[Dict], database) -> List[Dict[str, Any]]:
+    def _calculate_quarterly_returns(self, commissions: List[Dict]) -> List[Dict[str, Any]]:
         """Calculate quarterly commission returns"""
         quarterly_data = {}
         
@@ -481,7 +494,7 @@ class CommissionProcessor:
         
         return quarterly_returns
     
-    async def _calculate_yearly_returns(self, commissions: List[Dict], database) -> List[Dict[str, Any]]:
+    def _calculate_yearly_returns(self, commissions: List[Dict]) -> List[Dict[str, Any]]:
         """Calculate yearly commission returns"""
         yearly_data = {}
         
