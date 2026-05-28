@@ -7,6 +7,8 @@ import { Whiteboard } from './components/Whiteboard/Whiteboard'
 import { Structure3D } from './components/Structure3D/Structure3D'
 import { TestFeatures } from './components/TestFeatures/TestFeatures'
 import { ReferralManagement, AnalyticsDashboard, ExternalReferralForm } from './components/Referrals'
+import { PricingAdmin } from './components/PricingAdmin'
+import { Home } from './components/Home'
 import './App.css'
 
 function ProtectedRoute({ children, isAuthenticated }) {
@@ -31,6 +33,7 @@ function App() {
         {isAuthenticated && <Navigation user={user} />}
         <Routes>
           {/* Public Routes */}
+          <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/submit-referral" element={<ExternalReferralForm />} />
@@ -92,10 +95,18 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/pricing"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <PricingAdmin />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Default Route */}
           <Route
-            path="/"
+            path="/dashboard"
             element={
               isAuthenticated ? (
                 <Navigate to="/properties" />
@@ -129,6 +140,9 @@ function Navigation({ user }) {
         </div>
 
         <div className="navbar-menu">
+          <a href="/" className="nav-link">
+            Home
+          </a>
           <a href="/properties" className="nav-link">
             Properties
           </a>
@@ -150,6 +164,11 @@ function Navigation({ user }) {
           <a href="/analytics" className="nav-link">
             Analytics
           </a>
+          {user?.role === 'admin' && (
+            <a href="/pricing" className="nav-link">
+              Pricing
+            </a>
+          )}
           {user && (
             <div className="user-info">
               <span>{user.first_name}</span>

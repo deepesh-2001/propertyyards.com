@@ -28,6 +28,17 @@ docker-compose up -d
 ### 🏢 Core
 **Property** — Listings, search, inquiries, brokers, AI prediction, CRM
 
+### 🎨 Interactive Tools (NEW)
+**Whiteboard** — Drawing canvas for floor plans, property layouts with save/export  
+**3D Structure Generator** — Upload images to generate interactive 3D models (Three.js)  
+**Test Suite** — Component testing with sample data
+
+### 🤝 Referral Program (NEW)
+**External Referrals** — Public form for anyone to submit referrals  
+**Commission Tracking** — 2% default, customizable rates  
+**Analytics Dashboard** — PDF/Excel/JSON exports, charts, top referrers  
+**Role-Based Access** — Admin/Manager/Agent permissions
+
 ### 📊 Analytics (NEW)
 **Sales** — Track sales, commissions, brokers  
 **Projections** — AI market forecasts  
@@ -72,6 +83,7 @@ Health, Life, Property, Home insurance scraped from web with sales integration
 | **AI Service** | 8006 | Image gen, Content, Predictions | Vercel |
 | **Notification Service** | 8007 | Email, SMS, Push | Vercel |
 | **Analytics Service** | 8008 | Metrics, Dashboards | Vercel |
+| **Pricing Service** | 8009 | Dynamic pricing, subscriptions | Vercel |
 
 **Infrastructure:**  
 - **Database:** MongoDB Atlas (replica set)  
@@ -96,6 +108,25 @@ vercel --prod  # Deploys frontend + gateway
 ```
 
 See [MICROSERVICES_DEPLOY.md](MICROSERVICES_DEPLOY.md) for detailed deployment guide.
+
+### 💰 Dynamic Pricing (NEW)
+
+| Feature | Description | Admin Control |
+|---------|-------------|---------------|
+| Subscription Plans | Free, Basic($9.99), Pro($29.99), Enterprise($99.99) | ✅ Create/Edit/Delete |
+| Commission Rates | 2% default, tiered by property value | ✅ Update rates |
+| Service Fees | Custom fees per service type | ✅ Configure |
+| Discounts | Percentage-based dynamic discounts | ✅ Apply/Remove |
+| Price Multipliers | Market-adjustment multipliers | ✅ Set 0.5x-3x |
+| Price History | Track all price changes | ✅ View audit log |
+| Bulk Updates | Update multiple prices at once | ✅ Admin only |
+
+**Pricing API:**
+- `GET /pricing/rules` — List pricing rules
+- `POST /pricing/rules` — Create new rule
+- `PUT /pricing/rules/{id}` — Update rule
+- `POST /pricing/calculate` — Calculate dynamic price
+- `POST /pricing/bulk-update` — Bulk price changes
 
 ### 🔄 CI/CD Pipeline
 
@@ -133,7 +164,20 @@ See [MICROSERVICES_DEPLOY.md](MICROSERVICES_DEPLOY.md) for detailed deployment g
 
 ### Insurance (NEW)
 `GET /api/insurance/plans` — Scraped insurance plans  
-`GET /api/insurance/providers` — Insurance providers  
+`GET /api/insurance/providers` — Insurance providers
+
+### Whiteboard & 3D (NEW)
+`GET /whiteboard` — Drawing canvas tool  
+`POST /whiteboard/save` — Save whiteboard drawing  
+`GET /3d-structure` — 3D model generator  
+`POST /3d-structure/generate` — Generate 3D from image
+
+### Referrals (NEW)
+`GET /submit-referral` — Public referral form  
+`GET /referrals` — Manage referrals (admin/agent)  
+`POST /referrals/{id}/status` — Update referral status  
+`GET /analytics` — Referral analytics dashboard  
+`POST /analytics/export` — Export PDF/Excel/JSON  
 `POST /api/insurance/recommend` — AI-recommended plans  
 `POST /api/insurance/compare` — Compare plans side-by-side  
 `POST /api/insurance/sales/{id}/quotes` — Generate sale quotes  
@@ -159,6 +203,11 @@ uvicorn app.main:app --reload
 
 # Frontend  
 cd frontend && npm install && npm run dev
+
+# Pricing Service (NEW)
+cd microservices/pricing-service
+pip install fastapi uvicorn motor redis
+uvicorn main:app --port 8009
 ```
 
 ---
@@ -170,6 +219,9 @@ cd frontend && npm install && npm run dev
 JWT_SECRET_KEY=your-secret-key
 MONGO_ROOT_PASSWORD=db-password
 REDIS_PASSWORD=cache-password
+
+# Microservices
+PRICING_API_URL=http://localhost:8009  # Pricing service
 
 # Optional
 OPENAI_API_KEY=sk-...      # For AI features
