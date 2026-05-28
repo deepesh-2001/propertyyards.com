@@ -4289,3 +4289,315 @@ class DashboardAnalytics(BaseModel):
     inquiry_analytics: InquiryAnalytics
     generated_at: datetime
 
+
+# ========== Sales & Investment Schemas ==========
+
+class SaleType(str, Enum):
+    PROPERTY_SALE = "property_sale"
+    RENTAL = "rental"
+    COMMERCIAL = "commercial"
+    LAND = "land"
+
+
+class SalesRecordCreate(BaseModel):
+    property_id: str
+    seller_id: str
+    buyer_id: Optional[str] = None
+    sale_type: SaleType = SaleType.PROPERTY_SALE
+    sale_price: float = Field(..., gt=0)
+    original_listing_price: float = Field(..., gt=0)
+    commission_amount: float = 0
+    broker_id: Optional[str] = None
+    broker_commission: float = 0
+    sale_date: Optional[datetime] = None
+    closing_date: Optional[datetime] = None
+    payment_method: Optional[str] = None
+    financing_details: Optional[Dict[str, Any]] = None
+    notes: Optional[str] = None
+
+
+class SalesRecordUpdate(BaseModel):
+    sale_price: Optional[float] = None
+    status: Optional[str] = None
+    closing_date: Optional[datetime] = None
+    notes: Optional[str] = None
+
+
+class SalesRecordResponse(BaseModel):
+    id: str
+    property_id: str
+    seller_id: str
+    buyer_id: Optional[str]
+    sale_type: SaleType
+    sale_price: float
+    original_listing_price: float
+    commission_amount: float
+    broker_id: Optional[str]
+    broker_commission: float
+    sale_date: datetime
+    closing_date: Optional[datetime]
+    payment_method: Optional[str]
+    financing_details: Optional[Dict[str, Any]]
+    status: str
+    notes: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class SalesSummary(BaseModel):
+    total_sales: int
+    total_sales_value: float
+    total_commission: float
+    average_sale_price: float
+    sales_by_type: Dict[str, int]
+    sales_by_month: List[Dict[str, Any]]
+    top_performing_brokers: List[Dict[str, Any]]
+    conversion_rate: float
+
+
+class ProjectionType(str, Enum):
+    SALES = "sales"
+    REVENUE = "revenue"
+    GROWTH = "growth"
+    MARKET_TREND = "market_trend"
+    AI_FORECAST = "ai_forecast"
+
+
+class ProjectionCreate(BaseModel):
+    projection_type: ProjectionType
+    title: str
+    description: Optional[str] = None
+    period_start: datetime
+    period_end: datetime
+    location_filter: Optional[str] = None
+    property_type_filter: Optional[str] = None
+    projected_value: float
+    confidence_level: float = Field(0.8, ge=0.0, le=1.0)
+    methodology: str
+    data_points_used: int
+    historical_data_range: Optional[str] = None
+    breakdown_by_month: Optional[List[Dict[str, Any]]] = None
+    assumptions: Optional[Dict[str, Any]] = None
+
+
+class ProjectionResponse(BaseModel):
+    id: str
+    projection_type: ProjectionType
+    title: str
+    description: Optional[str]
+    period_start: datetime
+    period_end: datetime
+    location_filter: Optional[str]
+    property_type_filter: Optional[str]
+    projected_value: float
+    confidence_level: float
+    methodology: str
+    data_points_used: int
+    historical_data_range: Optional[str]
+    breakdown_by_month: List[Dict[str, Any]]
+    assumptions: Optional[Dict[str, Any]]
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class FutureGrowthCreate(BaseModel):
+    title: str
+    location: str
+    growth_rate_projected: float
+    time_horizon_years: int = Field(..., ge=1, le=50)
+    property_value_change: float
+    rental_yield_change: float
+    demand_index: float = Field(..., ge=0, le=100)
+    supply_index: float = Field(..., ge=0, le=100)
+    infrastructure_developments: Optional[List[str]] = None
+    economic_indicators: Optional[Dict[str, Any]] = None
+    population_growth: float
+    ai_confidence_score: float = 0.0
+    risk_factors: Optional[List[str]] = None
+    opportunities: Optional[List[str]] = None
+
+
+class FutureGrowthResponse(BaseModel):
+    id: str
+    title: str
+    location: str
+    growth_rate_projected: float
+    time_horizon_years: int
+    property_value_change: float
+    rental_yield_change: float
+    demand_index: float
+    supply_index: float
+    infrastructure_developments: List[str]
+    economic_indicators: Optional[Dict[str, Any]]
+    population_growth: float
+    ai_confidence_score: float
+    risk_factors: List[str]
+    opportunities: List[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class FutureProjectCreate(BaseModel):
+    project_name: str
+    developer_name: str
+    location: str
+    city: str
+    state: str
+    project_type: PropertyType
+    total_units: int = Field(..., gt=0)
+    unit_types: Optional[List[str]] = None
+    price_range_min: float = Field(..., gt=0)
+    price_range_max: float = Field(..., gt=0)
+    launch_date: Optional[datetime] = None
+    completion_date: Optional[datetime] = None
+    construction_status: str = "pre_launch"
+    amenities: Optional[List[str]] = None
+    description: Optional[str] = None
+    contact_info: Optional[Dict[str, Any]] = None
+    expected_roi: Optional[float] = None
+
+
+class FutureProjectUpdate(BaseModel):
+    project_name: Optional[str] = None
+    construction_status: Optional[str] = None
+    price_range_min: Optional[float] = None
+    price_range_max: Optional[float] = None
+    launch_date: Optional[datetime] = None
+    completion_date: Optional[datetime] = None
+    expected_roi: Optional[float] = None
+    is_featured: Optional[bool] = None
+    is_verified: Optional[bool] = None
+
+
+class FutureProjectResponse(BaseModel):
+    id: str
+    project_name: str
+    developer_name: str
+    location: str
+    city: str
+    state: str
+    project_type: PropertyType
+    total_units: int
+    unit_types: List[str]
+    price_range_min: float
+    price_range_max: float
+    launch_date: Optional[datetime]
+    completion_date: Optional[datetime]
+    construction_status: str
+    amenities: List[str]
+    description: Optional[str]
+    contact_info: Optional[Dict[str, Any]]
+    expected_roi: Optional[float]
+    is_verified: bool
+    is_featured: bool
+    created_by: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class InvestmentType(str, Enum):
+    RESIDENTIAL = "residential"
+    COMMERCIAL = "commercial"
+    RENTAL = "rental"
+    LAND = "land"
+    MIXED_USE = "mixed_use"
+    REIT = "reit"
+
+
+class RiskLevel(str, Enum):
+    LOW = "low"
+    MODERATE = "moderate"
+    HIGH = "high"
+    SPECULATIVE = "speculative"
+
+
+class InvestmentOpportunityCreate(BaseModel):
+    title: str
+    description: str
+    investment_type: InvestmentType
+    location: str
+    city: str
+    state: str
+    minimum_investment: float = Field(..., gt=0)
+    expected_roi_annual: float = Field(..., gt=0)
+    investment_term_months: int = Field(..., gt=0)
+    risk_level: RiskLevel = RiskLevel.MODERATE
+    property_id: Optional[str] = None
+    project_id: Optional[str] = None
+    total_funding_needed: Optional[float] = None
+    documents: Optional[List[str]] = None
+    highlights: Optional[List[str]] = None
+    market_analysis: Optional[Dict[str, Any]] = None
+    financial_projections: Optional[Dict[str, Any]] = None
+    closing_date: Optional[datetime] = None
+
+
+class InvestmentOpportunityUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    minimum_investment: Optional[float] = None
+    expected_roi_annual: Optional[float] = None
+    status: Optional[str] = None
+    funding_raised: Optional[float] = None
+    investors_count: Optional[int] = None
+    closing_date: Optional[datetime] = None
+
+
+class InvestmentOpportunityResponse(BaseModel):
+    id: str
+    title: str
+    description: str
+    investment_type: InvestmentType
+    location: str
+    city: str
+    state: str
+    minimum_investment: float
+    expected_roi_annual: float
+    investment_term_months: int
+    risk_level: RiskLevel
+    property_id: Optional[str]
+    project_id: Optional[str]
+    total_funding_needed: Optional[float]
+    funding_raised: float
+    investors_count: int
+    documents: List[str]
+    highlights: List[str]
+    market_analysis: Optional[Dict[str, Any]]
+    financial_projections: Optional[Dict[str, Any]]
+    status: str
+    closing_date: Optional[datetime]
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class AIProjectionRequest(BaseModel):
+    location: str
+    property_type: Optional[str] = None
+    time_horizon_months: int = Field(12, ge=1, le=60)
+    include_market_factors: bool = True
+    include_economic_indicators: bool = True
+
+
+class AIProjectionResponse(BaseModel):
+    location: str
+    projected_price_change: float
+    projected_rental_yield: float
+    confidence_score: float
+    market_trend: str
+    growth_drivers: List[str]
+    risk_factors: List[str]
+    monthly_projections: List[Dict[str, Any]]
+    generated_at: datetime
+
+
+class InvestmentSummary(BaseModel):
+    total_opportunities: int
+    total_funding_needed: float
+    total_funding_raised: float
+    by_investment_type: Dict[str, int]
+    by_risk_level: Dict[str, int]
+    top_opportunities: List[Dict[str, Any]]
+    average_roi: float
+

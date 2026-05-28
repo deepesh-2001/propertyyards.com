@@ -41,6 +41,11 @@ class ReportType(Enum):
     FINANCIAL_SUMMARY = "financial_summary"
     AI_PERFORMANCE = "ai_performance"
     SYSTEM_HEALTH = "system_health"
+    SALES_RECORDS = "sales_records"
+    PROJECTIONS = "projections"
+    FUTURE_GROWTH = "future_growth"
+    FUTURE_PROJECTS = "future_projects"
+    INVESTMENT_OPPORTUNITIES = "investment_opportunities"
     CUSTOM = "custom"
 
 
@@ -134,6 +139,11 @@ class ReportGenerator:
             ReportType.FINANCIAL_SUMMARY: self._gather_financial_data,
             ReportType.AI_PERFORMANCE: self._gather_ai_performance_data,
             ReportType.SYSTEM_HEALTH: self._gather_health_data,
+            ReportType.SALES_RECORDS: self._gather_sales_data,
+            ReportType.PROJECTIONS: self._gather_projection_data,
+            ReportType.FUTURE_GROWTH: self._gather_future_growth_data,
+            ReportType.FUTURE_PROJECTS: self._gather_future_projects_data,
+            ReportType.INVESTMENT_OPPORTUNITIES: self._gather_investment_data,
         }
 
         method = gather_methods.get(config.report_type)
@@ -446,6 +456,363 @@ class ReportGenerator:
                 "failed_services": len([r for r in rows if r["status"] == "error"]),
                 "auto_recovery_rate": healing_status.get("auto_recovery_rate", 0),
                 "recent_failures": healing_status.get("total_failures_24h", 0)
+            }
+        }
+
+    async def _gather_sales_data(
+        self,
+        config: ReportConfig,
+        database
+    ) -> Dict[str, Any]:
+        """Gather sales records data"""
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(days=config.date_range_days)
+
+        # Get sales records
+        query = {"sale_date": {"$gte": start_date, "$lte": end_date}}
+
+        if config.filters.get("status"):
+            query["status"] = config.filters["status"]
+        if config.filters.get("sale_type"):
+            query["sale_type"] = config.filters["sale_type"]
+        if config.filters.get("location"):
+            query["location"] = config.filters["location"]
+
+        sales = await database.sales_records.find(query).to_list(length=10000)
+
+        rows = []
+        for sale in sales:
+            rows.append({
+                "sale_id": str(sale.get("_id", "")),
+                "property_id": sale.get("property_id", ""),
+                "seller_id": sale.get("seller_id", ""),
+                "buyer_id": sale.get("buyer_id", ""),
+                "sale_type": sale.get("sale_type", ""),
+                "sale_price": sale.get("sale_price", 0),
+                "original_listing_price": sale.get("original_listing_price", 0),
+                "commission_amount": sale.get("commission_amount", 0),
+                "broker_id": sale.get("broker_id", ""),
+                "broker_commission": sale.get("broker_commission", 0),
+                "sale_date": sale.get("sale_date", ""),
+                "closing_date": sale.get("closing_date", ""),
+                "payment_method": sale.get("payment_method", ""),
+                "status": sale.get("status", "")
+            })
+
+        # Calculate summary statistics
+        total_sales = len(rows)
+        total_value = sum(r["sale_price"] for r in rows)
+        total_commission = sum(r["commission_amount"] for r in rows)
+        avg_sale_price = total_value / total_sales if total_sales > 0 else 0
+
+        # Sales by type
+        sales_by_type = {}
+        for r in rows:
+            st = r["sale_type"]
+            sales_by_type[st] = sales_by_type.get(st, 0) + 1
+
+        # Top performing brokers
+        broker_commissions = {}
+        for r in rows:
+            broker_id = r.get("broker_id")
+            if broker_id:
+                broker_commissions[broker_id] = broker_commissions.get(broker_id, 0) + r["broker_commission"]
+        top_brokers = sorted(broker_commissions.items(), key=lambda x: x[1], reverse=True)[:10]
+
+        return {
+            "title": "Sales Records Report",
+            "generated_at": datetime.utcnow().isoformat(),
+            "date_range": {
+                "start": start_date.isoformat(),
+                "end": end_date.isoformat()
+            },
+            "rows": rows,
+            "summary": {
+                "total_sales": total_sales,
+                "total_sales_value": total_value,
+                "total_commission": total_commission,
+                "average_sale_price": avg_sale_price,
+                "sales_by_type": sales_by_type,
+                "top_performing_brokers": [{"broker_id": b[0], "commission": b[1]} for b in top_brokers]
+            }
+        }
+
+    async def _gather_projection_data(
+        self,
+        config: ReportConfig,
+        database
+    ) -> Dict[str, Any]:
+        """Gather projections and forecasts data"""
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(days=config.date_range_days)
+
+        # Get projections
+        query = {"created_at": {"$gte": start_date, "$lte": end_date}}
+
+        if config.filters.get("projection_type"):
+            query["projection_type"] = config.filters["projection_type"]
+
+        projections = await database.projections.find(query).to_list(length=10000)
+
+        rows = []
+        for proj in projections:
+            rows.append({
+                "projection_id": str(proj.get("_id", "")),
+                "projection_type": proj.get("projection_type", ""),
+                "title": proj.get("title", ""),
+                "location_filter": proj.get("location_filter", ""),
+                "property_type_filter": proj.get("property_type_filter", ""),
+                "period_start": proj.get("period_start", ""),
+                "period_end": proj.get("period_end", ""),
+                "projected_value": proj.get("projected_value", 0),
+                "confidence_level": proj.get("confidence_level", 0),
+                "methodology": proj.get("methodology", ""),
+                "data_points_used": proj.get("data_points_used", 0),
+                "created_by": proj.get("created_by", ""),
+                "created_at": proj.get("created_at", "")
+            })
+
+        # Group by projection type
+        by_type = {}
+        for r in rows:
+            pt = r["projection_type"]
+            if pt not in by_type:
+                by_type[pt] = []
+            by_type[pt].append(r)
+
+        # Calculate average confidence by type
+        avg_confidence = {}
+        for pt, items in by_type.items():
+            avg_confidence[pt] = sum(r["confidence_level"] for r in items) / len(items) if items else 0
+
+        return {
+            "title": "Projections & Forecasts Report",
+            "generated_at": datetime.utcnow().isoformat(),
+            "date_range": {
+                "start": start_date.isoformat(),
+                "end": end_date.isoformat()
+            },
+            "rows": rows,
+            "summary": {
+                "total_projections": len(rows),
+                "by_type_counts": {k: len(v) for k, v in by_type.items()},
+                "average_confidence_by_type": avg_confidence,
+                "high_confidence_projections": len([r for r in rows if r["confidence_level"] >= 0.8])
+            }
+        }
+
+    async def _gather_future_growth_data(
+        self,
+        config: ReportConfig,
+        database
+    ) -> Dict[str, Any]:
+        """Gather future growth analysis data"""
+        # Get future growth records
+        query = {}
+
+        if config.filters.get("location"):
+            query["location"] = config.filters["location"]
+        if config.filters.get("time_horizon_years"):
+            query["time_horizon_years"] = config.filters["time_horizon_years"]
+
+        growth_records = await database.future_growth.find(query).to_list(length=10000)
+
+        rows = []
+        for record in growth_records:
+            rows.append({
+                "growth_id": str(record.get("_id", "")),
+                "title": record.get("title", ""),
+                "location": record.get("location", ""),
+                "growth_rate_projected": record.get("growth_rate_projected", 0),
+                "time_horizon_years": record.get("time_horizon_years", 0),
+                "property_value_change": record.get("property_value_change", 0),
+                "rental_yield_change": record.get("rental_yield_change", 0),
+                "demand_index": record.get("demand_index", 0),
+                "supply_index": record.get("supply_index", 0),
+                "population_growth": record.get("population_growth", 0),
+                "ai_confidence_score": record.get("ai_confidence_score", 0),
+                "risk_factors": record.get("risk_factors", []),
+                "opportunities": record.get("opportunities", []),
+                "infrastructure_developments": record.get("infrastructure_developments", []),
+                "created_at": record.get("created_at", "")
+            })
+
+        # Calculate averages
+        avg_growth_rate = sum(r["growth_rate_projected"] for r in rows) / len(rows) if rows else 0
+        avg_property_change = sum(r["property_value_change"] for r in rows) / len(rows) if rows else 0
+        avg_ai_confidence = sum(r["ai_confidence_score"] for r in rows) / len(rows) if rows else 0
+
+        # High growth locations
+        high_growth = [r for r in rows if r["growth_rate_projected"] > avg_growth_rate]
+
+        return {
+            "title": "Future Growth Analysis Report",
+            "generated_at": datetime.utcnow().isoformat(),
+            "rows": rows,
+            "summary": {
+                "total_analyses": len(rows),
+                "average_growth_rate": avg_growth_rate,
+                "average_property_value_change": avg_property_change,
+                "average_ai_confidence": avg_ai_confidence,
+                "high_growth_locations": len(high_growth),
+                "top_opportunities": sorted(rows, key=lambda x: x["growth_rate_projected"], reverse=True)[:10]
+            }
+        }
+
+    async def _gather_future_projects_data(
+        self,
+        config: ReportConfig,
+        database
+    ) -> Dict[str, Any]:
+        """Gather future/upcoming projects data"""
+        # Get future projects
+        query = {}
+
+        if config.filters.get("city"):
+            query["city"] = config.filters["city"]
+        if config.filters.get("project_type"):
+            query["project_type"] = config.filters["project_type"]
+        if config.filters.get("construction_status"):
+            query["construction_status"] = config.filters["construction_status"]
+        if config.filters.get("is_verified"):
+            query["is_verified"] = config.filters["is_verified"]
+
+        projects = await database.future_projects.find(query).to_list(length=10000)
+
+        rows = []
+        for project in projects:
+            rows.append({
+                "project_id": str(project.get("_id", "")),
+                "project_name": project.get("project_name", ""),
+                "developer_name": project.get("developer_name", ""),
+                "location": project.get("location", ""),
+                "city": project.get("city", ""),
+                "state": project.get("state", ""),
+                "project_type": project.get("project_type", ""),
+                "total_units": project.get("total_units", 0),
+                "unit_types": project.get("unit_types", []),
+                "price_range_min": project.get("price_range_min", 0),
+                "price_range_max": project.get("price_range_max", 0),
+                "launch_date": project.get("launch_date", ""),
+                "completion_date": project.get("completion_date", ""),
+                "construction_status": project.get("construction_status", ""),
+                "amenities": project.get("amenities", []),
+                "expected_roi": project.get("expected_roi", 0),
+                "is_verified": project.get("is_verified", False),
+                "is_featured": project.get("is_featured", False),
+                "created_at": project.get("created_at", "")
+            })
+
+        # Summary by status
+        by_status = {}
+        for r in rows:
+            status = r["construction_status"]
+            by_status[status] = by_status.get(status, 0) + 1
+
+        # By city
+        by_city = {}
+        for r in rows:
+            city = r["city"]
+            by_city[city] = by_city.get(city, 0) + 1
+
+        # Verified vs unverified
+        verified_count = len([r for r in rows if r["is_verified"]])
+
+        return {
+            "title": "Future Projects Report",
+            "generated_at": datetime.utcnow().isoformat(),
+            "rows": rows,
+            "summary": {
+                "total_projects": len(rows),
+                "by_status": by_status,
+                "by_city": by_city,
+                "verified_projects": verified_count,
+                "featured_projects": len([r for r in rows if r["is_featured"]]),
+                "total_units_in_pipeline": sum(r["total_units"] for r in rows),
+                "average_price_range": {
+                    "min": sum(r["price_range_min"] for r in rows) / len(rows) if rows else 0,
+                    "max": sum(r["price_range_max"] for r in rows) / len(rows) if rows else 0
+                }
+            }
+        }
+
+    async def _gather_investment_data(
+        self,
+        config: ReportConfig,
+        database
+    ) -> Dict[str, Any]:
+        """Gather investment opportunities data"""
+        # Get investment opportunities
+        query = {}
+
+        if config.filters.get("status"):
+            query["status"] = config.filters["status"]
+        if config.filters.get("investment_type"):
+            query["investment_type"] = config.filters["investment_type"]
+        if config.filters.get("risk_level"):
+            query["risk_level"] = config.filters["risk_level"]
+        if config.filters.get("location"):
+            query["location"] = config.filters["location"]
+
+        opportunities = await database.investment_opportunities.find(query).to_list(length=10000)
+
+        rows = []
+        for opp in opportunities:
+            rows.append({
+                "opportunity_id": str(opp.get("_id", "")),
+                "title": opp.get("title", ""),
+                "investment_type": opp.get("investment_type", ""),
+                "location": opp.get("location", ""),
+                "city": opp.get("city", ""),
+                "state": opp.get("state", ""),
+                "minimum_investment": opp.get("minimum_investment", 0),
+                "expected_roi_annual": opp.get("expected_roi_annual", 0),
+                "investment_term_months": opp.get("investment_term_months", 0),
+                "risk_level": opp.get("risk_level", ""),
+                "total_funding_needed": opp.get("total_funding_needed", 0),
+                "funding_raised": opp.get("funding_raised", 0),
+                "investors_count": opp.get("investors_count", 0),
+                "status": opp.get("status", ""),
+                "highlights": opp.get("highlights", []),
+                "closing_date": opp.get("closing_date", ""),
+                "created_at": opp.get("created_at", "")
+            })
+
+        # Summary by type
+        by_type = {}
+        for r in rows:
+            it = r["investment_type"]
+            by_type[it] = by_type.get(it, 0) + 1
+
+        # By risk level
+        by_risk = {}
+        for r in rows:
+            rl = r["risk_level"]
+            by_risk[rl] = by_risk.get(rl, 0) + 1
+
+        # Funding stats
+        total_needed = sum(r["total_funding_needed"] or 0 for r in rows)
+        total_raised = sum(r["funding_raised"] for r in rows)
+
+        # Top opportunities by ROI
+        top_roi = sorted([r for r in rows if r["status"] == "open"],
+                        key=lambda x: x["expected_roi_annual"], reverse=True)[:10]
+
+        return {
+            "title": "Investment Opportunities Report",
+            "generated_at": datetime.utcnow().isoformat(),
+            "rows": rows,
+            "summary": {
+                "total_opportunities": len(rows),
+                "by_investment_type": by_type,
+                "by_risk_level": by_risk,
+                "total_funding_needed": total_needed,
+                "total_funding_raised": total_raised,
+                "funding_completion_rate": (total_raised / total_needed * 100) if total_needed > 0 else 0,
+                "average_roi": sum(r["expected_roi_annual"] for r in rows) / len(rows) if rows else 0,
+                "top_opportunities_by_roi": top_roi,
+                "open_opportunities": len([r for r in rows if r["status"] == "open"]),
+                "funded_opportunities": len([r for r in rows if r["status"] == "funded"])
             }
         }
 

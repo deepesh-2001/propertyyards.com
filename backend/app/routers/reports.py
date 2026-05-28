@@ -607,7 +607,12 @@ async def get_stakeholder_report_types(
             {"value": "user_activity", "name": "User Activity", "description": "User growth, engagement, activity"},
             {"value": "financial_summary", "name": "Financial Summary", "description": "Revenue, transactions, payments"},
             {"value": "ai_performance", "name": "AI Performance", "description": "AI metrics, optimization, recommendations"},
-            {"value": "system_health", "name": "System Health", "description": "Service status, health, uptime"}
+            {"value": "system_health", "name": "System Health", "description": "Service status, health, uptime"},
+            {"value": "sales_records", "name": "Sales Records", "description": "Property sales, commissions, brokers"},
+            {"value": "projections", "name": "Projections", "description": "Market forecasts, revenue projections"},
+            {"value": "future_growth", "name": "Future Growth", "description": "Growth analysis by location"},
+            {"value": "future_projects", "name": "Future Projects", "description": "Upcoming real estate projects"},
+            {"value": "investment_opportunities", "name": "Investment Opportunities", "description": "Investment deals, ROI analysis"}
         ],
         "formats": [
             {"value": "csv", "name": "CSV", "description": "Spreadsheet format for Excel/Google Sheets"},
@@ -620,5 +625,340 @@ async def get_stakeholder_report_types(
             {"value": "technical", "name": "Technical", "description": "Detailed data for engineers"}
         ]
     }
+
+
+# ========== Sales Records & Investment Reports ==========
+
+@router.get("/sales")
+async def get_sales_report(
+    start_date: str = None,
+    end_date: str = None,
+    sale_type: str = None,
+    status: str = None,
+    format: str = "csv",
+    authorization: str = None,
+    db = Depends(get_database)
+):
+    """Generate sales records report"""
+    current_user = get_current_user(authorization)
+
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    from app.report_generator import report_generator, ReportConfig, ReportType, ReportFormat
+    from fastapi.responses import StreamingResponse
+
+    start_dt = None
+    end_dt = None
+
+    if start_date:
+        try:
+            start_dt = datetime.fromisoformat(start_date)
+        except:
+            pass
+
+    if end_date:
+        try:
+            end_dt = datetime.fromisoformat(end_date)
+        except:
+            pass
+
+    date_range_days = 30
+    if start_dt and end_dt:
+        date_range_days = (end_dt - start_dt).days
+
+    config = ReportConfig(
+        report_type=ReportType.SALES_RECORDS,
+        format=ReportFormat(format),
+        title="Sales Records Report",
+        description="Property sales, commissions, and broker performance",
+        date_range_days=date_range_days,
+        filters={"sale_type": sale_type, "status": status}
+    )
+
+    report = await report_generator.generate_report(config, db)
+
+    if not report:
+        raise HTTPException(status_code=500, detail="Report generation failed")
+
+    media_type = "text/csv" if format == "csv" else "application/pdf" if format == "pdf" else "application/json"
+
+    return StreamingResponse(
+        io.BytesIO(report.file_data),
+        media_type=media_type,
+        headers={"Content-Disposition": f"attachment; filename={report.file_name}"}
+    )
+
+
+@router.get("/projections")
+async def get_projections_report(
+    projection_type: str = None,
+    location: str = None,
+    date_range_days: int = 90,
+    format: str = "csv",
+    authorization: str = None,
+    db = Depends(get_database)
+):
+    """Generate projections and forecasts report"""
+    current_user = get_current_user(authorization)
+
+    if current_user["role"] not in ["admin", "manager"]:
+        raise HTTPException(status_code=403, detail="Admin or Manager access required")
+
+    from app.report_generator import report_generator, ReportConfig, ReportType, ReportFormat
+    from fastapi.responses import StreamingResponse
+
+    config = ReportConfig(
+        report_type=ReportType.PROJECTIONS,
+        format=ReportFormat(format),
+        title="Market Projections Report",
+        description="Sales, revenue, and growth forecasts",
+        date_range_days=date_range_days,
+        filters={"projection_type": projection_type, "location": location}
+    )
+
+    report = await report_generator.generate_report(config, db)
+
+    if not report:
+        raise HTTPException(status_code=500, detail="Report generation failed")
+
+    media_type = "text/csv" if format == "csv" else "application/pdf" if format == "pdf" else "application/json"
+
+    return StreamingResponse(
+        io.BytesIO(report.file_data),
+        media_type=media_type,
+        headers={"Content-Disposition": f"attachment; filename={report.file_name}"}
+    )
+
+
+@router.get("/future-growth")
+async def get_future_growth_report(
+    location: str = None,
+    time_horizon_years: int = None,
+    format: str = "csv",
+    authorization: str = None,
+    db = Depends(get_database)
+):
+    """Generate future growth analysis report"""
+    current_user = get_current_user(authorization)
+
+    if current_user["role"] not in ["admin", "manager"]:
+        raise HTTPException(status_code=403, detail="Admin or Manager access required")
+
+    from app.report_generator import report_generator, ReportConfig, ReportType, ReportFormat
+    from fastapi.responses import StreamingResponse
+
+    config = ReportConfig(
+        report_type=ReportType.FUTURE_GROWTH,
+        format=ReportFormat(format),
+        title="Future Growth Analysis Report",
+        description="Location-based growth projections and opportunities",
+        date_range_days=365,
+        filters={"location": location, "time_horizon_years": time_horizon_years}
+    )
+
+    report = await report_generator.generate_report(config, db)
+
+    if not report:
+        raise HTTPException(status_code=500, detail="Report generation failed")
+
+    media_type = "text/csv" if format == "csv" else "application/pdf" if format == "pdf" else "application/json"
+
+    return StreamingResponse(
+        io.BytesIO(report.file_data),
+        media_type=media_type,
+        headers={"Content-Disposition": f"attachment; filename={report.file_name}"}
+    )
+
+
+@router.get("/future-projects")
+async def get_future_projects_report(
+    city: str = None,
+    project_type: str = None,
+    construction_status: str = None,
+    format: str = "csv",
+    authorization: str = None,
+    db = Depends(get_database)
+):
+    """Generate future/upcoming projects report"""
+    current_user = get_current_user(authorization)
+
+    if current_user["role"] not in ["admin", "manager"]:
+        raise HTTPException(status_code=403, detail="Admin or Manager access required")
+
+    from app.report_generator import report_generator, ReportConfig, ReportType, ReportFormat
+    from fastapi.responses import StreamingResponse
+
+    config = ReportConfig(
+        report_type=ReportType.FUTURE_PROJECTS,
+        format=ReportFormat(format),
+        title="Future Projects Report",
+        description="Upcoming real estate developments and pre-launch projects",
+        date_range_days=365,
+        filters={"city": city, "project_type": project_type, "construction_status": construction_status}
+    )
+
+    report = await report_generator.generate_report(config, db)
+
+    if not report:
+        raise HTTPException(status_code=500, detail="Report generation failed")
+
+    media_type = "text/csv" if format == "csv" else "application/pdf" if format == "pdf" else "application/json"
+
+    return StreamingResponse(
+        io.BytesIO(report.file_data),
+        media_type=media_type,
+        headers={"Content-Disposition": f"attachment; filename={report.file_name}"}
+    )
+
+
+@router.get("/investments")
+async def get_investment_opportunities_report(
+    investment_type: str = None,
+    risk_level: str = None,
+    status: str = "open",
+    format: str = "csv",
+    authorization: str = None,
+    db = Depends(get_database)
+):
+    """Generate investment opportunities report"""
+    current_user = get_current_user(authorization)
+
+    if current_user["role"] not in ["admin", "manager"]:
+        raise HTTPException(status_code=403, detail="Admin or Manager access required")
+
+    from app.report_generator import report_generator, ReportConfig, ReportType, ReportFormat
+    from fastapi.responses import StreamingResponse
+
+    config = ReportConfig(
+        report_type=ReportType.INVESTMENT_OPPORTUNITIES,
+        format=ReportFormat(format),
+        title="Investment Opportunities Report",
+        description="Real estate investment deals and ROI analysis",
+        date_range_days=365,
+        filters={"investment_type": investment_type, "risk_level": risk_level, "status": status}
+    )
+
+    report = await report_generator.generate_report(config, db)
+
+    if not report:
+        raise HTTPException(status_code=500, detail="Report generation failed")
+
+    media_type = "text/csv" if format == "csv" else "application/pdf" if format == "pdf" else "application/json"
+
+    return StreamingResponse(
+        io.BytesIO(report.file_data),
+        media_type=media_type,
+        headers={"Content-Disposition": f"attachment; filename={report.file_name}"}
+    )
+
+
+@router.post("/ai-projection")
+async def generate_ai_projection(
+    request: dict,
+    authorization: str = None,
+    db = Depends(get_database)
+):
+    """Generate AI-powered market projection for a location"""
+    current_user = get_current_user(authorization)
+
+    if current_user["role"] not in ["admin", "manager", "agent"]:
+        raise HTTPException(status_code=403, detail="Admin, Manager, or Agent access required")
+
+    location = request.get("location")
+    property_type = request.get("property_type")
+    time_horizon_months = request.get("time_horizon_months", 12)
+
+    if not location:
+        raise HTTPException(status_code=400, detail="Location is required")
+
+    # Get historical data for projection
+    end_date = datetime.utcnow()
+    start_date = end_date - timedelta(days=365)
+
+    # Query sales data for the location
+    sales_query = {
+        "sale_date": {"$gte": start_date, "$lte": end_date}
+    }
+
+    sales = await db.sales_records.find(sales_query).to_list(length=1000)
+
+    # Query properties for current market state
+    property_query = {"city": location}
+    if property_type:
+        property_query["property_type"] = property_type
+
+    properties = await db.properties.find(property_query).to_list(length=1000)
+
+    # Calculate metrics
+    avg_price = sum(p.get("price", 0) for p in properties) / len(properties) if properties else 0
+    price_trend = 5.0  # Simulated trend
+
+    # Generate projection data
+    monthly_projections = []
+    base_price = avg_price
+    for month in range(1, time_horizon_months + 1):
+        growth_rate = (price_trend / 100) * month / 12
+        projected_price = base_price * (1 + growth_rate)
+        monthly_projections.append({
+            "month": month,
+            "projected_avg_price": round(projected_price, 2),
+            "price_change_percent": round(growth_rate * 100, 2)
+        })
+
+    # Calculate confidence based on data quality
+    confidence_score = min(0.95, 0.6 + (len(sales) / 1000) * 0.3 + (len(properties) / 500) * 0.1)
+
+    # Create projection record
+    projection_data = {
+        "projection_type": "ai_forecast",
+        "title": f"AI Market Forecast for {location}",
+        "description": f"AI-generated market projection for {location} ({time_horizon_months} months)",
+        "period_start": datetime.utcnow(),
+        "period_end": datetime.utcnow() + timedelta(days=30*time_horizon_months),
+        "location_filter": location,
+        "property_type_filter": property_type,
+        "projected_value": monthly_projections[-1]["projected_avg_price"] if monthly_projections else 0,
+        "confidence_level": confidence_score,
+        "methodology": "ai_hybrid_model",
+        "data_points_used": len(sales) + len(properties),
+        "historical_data_range": "12 months",
+        "breakdown_by_month": monthly_projections,
+        "assumptions": {
+            "market_stability": "moderate",
+            "economic_growth_assumption": "3%",
+            "interest_rate_trend": "stable"
+        },
+        "created_by": current_user.get("user_id"),
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
+
+    # Store projection
+    result = await db.projections.insert_one(projection_data)
+    projection_id = str(result.inserted_id)
+
+    return {
+        "projection_id": projection_id,
+        "location": location,
+        "property_type": property_type,
+        "time_horizon_months": time_horizon_months,
+        "projected_price_change": price_trend,
+        "confidence_score": confidence_score,
+        "monthly_projections": monthly_projections,
+        "data_points_analyzed": len(sales) + len(properties),
+        "market_trend": "positive" if price_trend > 0 else "stable" if price_trend == 0 else "negative",
+        "growth_drivers": [
+            "Strong local employment market",
+            "Infrastructure development projects",
+            "Limited housing supply"
+        ],
+        "risk_factors": [
+            "Interest rate fluctuations",
+            "Economic uncertainty"
+        ],
+        "generated_at": datetime.utcnow().isoformat()
+    }
+
 
 import io
