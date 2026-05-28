@@ -9,6 +9,8 @@ import { TestFeatures } from './components/TestFeatures/TestFeatures'
 import { ReferralManagement, AnalyticsDashboard, ExternalReferralForm } from './components/Referrals'
 import { PricingAdmin } from './components/PricingAdmin'
 import { Home } from './components/Home'
+import { SecurityCacheTesting } from './components/AdminPanel'
+import { SEODashboard } from './components/SEODashboard'
 import './App.css'
 
 function ProtectedRoute({ children, isAuthenticated }) {
@@ -103,6 +105,22 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <SecurityCacheTesting />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/seo"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <SEODashboard />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Default Route */}
           <Route
@@ -165,9 +183,17 @@ function Navigation({ user }) {
             Analytics
           </a>
           {user?.role === 'admin' && (
-            <a href="/pricing" className="nav-link">
-              Pricing
-            </a>
+            <>
+              <a href="/pricing" className="nav-link">
+                Pricing
+              </a>
+              <a href="/seo" className="nav-link">
+                SEO
+              </a>
+              <a href="/admin" className="nav-link">
+                Admin
+              </a>
+            </>
           )}
           {user && (
             <div className="user-info">
