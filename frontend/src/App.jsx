@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { Analytics } from '@vercel/analytics/react'
 import { useAuthStore } from './stores/authStore'
 import { Login, Register } from './components/Auth/Auth'
 import { PropertyList, PropertySearch } from './components/Properties/Properties'
@@ -36,6 +37,7 @@ function App() {
       <div className="App">
         {isAuthenticated && <Navigation user={user} />}
         <AlertContainer />
+        <Analytics />
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
