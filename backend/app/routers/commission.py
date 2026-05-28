@@ -22,6 +22,7 @@ from app.schemas import (
 from app.commission import commission_processor
 from app.auth import get_current_user
 from app.cache import get_from_cache, set_in_cache, delete_from_cache, generate_cache_key, invalidate_cache_pattern
+from app.feature_flags import require_feature_flag
 
 router = APIRouter(prefix="/api/commissions", tags=["commissions"])
 
@@ -29,6 +30,7 @@ router = APIRouter(prefix="/api/commissions", tags=["commissions"])
 # ========== Commission Rules Endpoints ==========
 
 @router.post("/rules", response_model=CommissionRuleResponse, status_code=status.HTTP_201_CREATED)
+@require_feature_flag("commission_system")
 async def create_commission_rule(
     rule: CommissionRuleCreate,
     database=Depends(get_db),
@@ -54,6 +56,7 @@ async def create_commission_rule(
 
 
 @router.get("/rules/{rule_id}", response_model=CommissionRuleResponse)
+@require_feature_flag("commission_system")
 async def get_commission_rule(
     rule_id: str,
     database=Depends(get_db),
@@ -71,6 +74,7 @@ async def get_commission_rule(
 
 
 @router.get("/rules", response_model=List[CommissionRuleResponse])
+@require_feature_flag("commission_system")
 async def get_commission_rules(
     commission_type: Optional[CommissionType] = None,
     is_active: Optional[bool] = None,
@@ -106,6 +110,7 @@ async def get_commission_rules(
 # ========== Commission Endpoints ==========
 
 @router.post("/calculate")
+@require_feature_flag("commission_system")
 async def calculate_commission(
     deal_id: str,
     deal_type: str,
@@ -133,6 +138,7 @@ async def calculate_commission(
 
 
 @router.post("/builder-property")
+@require_feature_flag("commission_system")
 async def calculate_builder_property_commission(
     property_id: str,
     property_value: float,
@@ -159,6 +165,7 @@ async def calculate_builder_property_commission(
 
 
 @router.post("/loan")
+@require_feature_flag("commission_system")
 async def calculate_loan_commission(
     loan_id: str,
     loan_amount: float,
@@ -185,6 +192,7 @@ async def calculate_loan_commission(
 
 
 @router.post("/credit-card-cashback")
+@require_feature_flag("credit_card_cashback")
 async def calculate_credit_card_cashback_commission(
     cashback_id: str,
     cashback_amount: float,
@@ -211,6 +219,7 @@ async def calculate_credit_card_cashback_commission(
 
 
 @router.get("/commissions/{commission_id}", response_model=CommissionResponse)
+@require_feature_flag("commission_system")
 async def get_commission(
     commission_id: str,
     database=Depends(get_db),
@@ -228,6 +237,7 @@ async def get_commission(
 
 
 @router.get("/recipients/{recipient_id}/commissions", response_model=List[CommissionResponse])
+@require_feature_flag("commission_system")
 async def get_recipient_commissions(
     recipient_id: str,
     status: Optional[CommissionStatus] = None,
@@ -250,6 +260,7 @@ async def get_recipient_commissions(
 
 
 @router.get("/deals/{deal_id}/commissions", response_model=List[CommissionResponse])
+@require_feature_flag("commission_system")
 async def get_deal_commissions(
     deal_id: str,
     database=Depends(get_db),
@@ -267,6 +278,7 @@ async def get_deal_commissions(
 
 
 @router.put("/commissions/{commission_id}/approve")
+@require_feature_flag("commission_system")
 async def approve_commission(
     commission_id: str,
     database=Depends(get_db),
@@ -287,6 +299,7 @@ async def approve_commission(
 # ========== Commission Payouts Endpoints ==========
 
 @router.post("/payouts", response_model=CommissionPayoutResponse, status_code=status.HTTP_201_CREATED)
+@require_feature_flag("commission_system")
 async def create_commission_payout(
     payout: CommissionPayoutCreate,
     database=Depends(get_db),
@@ -306,6 +319,7 @@ async def create_commission_payout(
 
 
 @router.get("/payouts/{payout_id}", response_model=CommissionPayoutResponse)
+@require_feature_flag("commission_system")
 async def get_commission_payout(
     payout_id: str,
     database=Depends(get_db),
@@ -323,6 +337,7 @@ async def get_commission_payout(
 
 
 @router.get("/payouts", response_model=List[CommissionPayoutResponse])
+@require_feature_flag("commission_system")
 async def get_commission_payouts(
     status: Optional[str] = None,
     database=Depends(get_db),
@@ -346,6 +361,7 @@ async def get_commission_payouts(
 # ========== Commission Analytics Endpoints ==========
 
 @router.get("/analytics", response_model=CommissionAnalytics)
+@require_feature_flag("commission_system")
 async def get_commission_analytics(
     recipient_id: Optional[str] = None,
     start_date: Optional[datetime] = None,
@@ -382,6 +398,7 @@ async def get_commission_analytics(
 
 
 @router.get("/returns/monthly")
+@require_feature_flag("commission_system")
 async def get_monthly_returns(
     recipient_id: Optional[str] = None,
     year: Optional[int] = None,
@@ -414,6 +431,7 @@ async def get_monthly_returns(
 
 
 @router.get("/returns/quarterly")
+@require_feature_flag("commission_system")
 async def get_quarterly_returns(
     recipient_id: Optional[str] = None,
     year: Optional[int] = None,
@@ -446,6 +464,7 @@ async def get_quarterly_returns(
 
 
 @router.get("/returns/yearly")
+@require_feature_flag("commission_system")
 async def get_yearly_returns(
     recipient_id: Optional[str] = None,
     database=Depends(get_db),
@@ -475,6 +494,7 @@ async def get_yearly_returns(
 
 
 @router.get("/returns/total")
+@require_feature_flag("commission_system")
 async def get_total_returns(
     recipient_id: str,
     database=Depends(get_db),

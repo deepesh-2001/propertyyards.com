@@ -36,6 +36,7 @@ from app.schemas import (
 )
 from app.payment import payment_processor, PaymentGatewayError
 from app.auth import get_current_user
+from app.feature_flags import require_feature_flag
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ security = HTTPBearer()
 # ========== Payment Conditions Endpoints ==========
 
 @router.post("/conditions", response_model=PaymentConditionResponse, status_code=status.HTTP_201_CREATED)
+@require_feature_flag("payment_conditions")
 async def create_payment_condition(
     condition: PaymentConditionCreate,
     database=Depends(get_db),
@@ -93,6 +95,7 @@ async def create_payment_condition(
 
 
 @router.get("/conditions/{condition_id}", response_model=PaymentConditionResponse)
+@require_feature_flag("payment_conditions")
 async def get_payment_condition(
     condition_id: str,
     database=Depends(get_db),
@@ -110,6 +113,7 @@ async def get_payment_condition(
 
 
 @router.get("/properties/{property_id}/conditions", response_model=List[PaymentConditionResponse])
+@require_feature_flag("payment_conditions")
 async def get_property_payment_conditions(
     property_id: str,
     database=Depends(get_db),
@@ -127,6 +131,7 @@ async def get_property_payment_conditions(
 
 
 @router.put("/conditions/{condition_id}", response_model=PaymentConditionResponse)
+@require_feature_flag("payment_conditions")
 async def update_payment_condition(
     condition_id: str,
     condition_update: PaymentConditionUpdate,
@@ -153,6 +158,7 @@ async def update_payment_condition(
 
 
 @router.delete("/conditions/{condition_id}", status_code=status.HTTP_204_NO_CONTENT)
+@require_feature_flag("payment_conditions")
 async def delete_payment_condition(
     condition_id: str,
     database=Depends(get_db),
@@ -168,6 +174,7 @@ async def delete_payment_condition(
 # ========== Payment Methods Endpoints ==========
 
 @router.post("/methods", response_model=PaymentMethodResponse, status_code=status.HTTP_201_CREATED)
+@require_feature_flag("payment_methods")
 async def create_payment_method(
     method: PaymentMethodCreate,
     database=Depends(get_db),
@@ -199,6 +206,7 @@ async def create_payment_method(
 
 
 @router.get("/methods", response_model=List[PaymentMethodResponse])
+@require_feature_flag("payment_methods")
 async def get_user_payment_methods(
     user_id: str,
     database=Depends(get_db),
@@ -216,6 +224,7 @@ async def get_user_payment_methods(
 
 
 @router.get("/methods/{method_id}", response_model=PaymentMethodResponse)
+@require_feature_flag("payment_methods")
 async def get_payment_method(
     method_id: str,
     database=Depends(get_db),
@@ -233,6 +242,7 @@ async def get_payment_method(
 
 
 @router.put("/methods/{method_id}", response_model=PaymentMethodResponse)
+@require_feature_flag("payment_methods")
 async def update_payment_method(
     method_id: str,
     method_update: PaymentMethodUpdate,
@@ -268,6 +278,7 @@ async def update_payment_method(
 
 
 @router.delete("/methods/{method_id}", status_code=status.HTTP_204_NO_CONTENT)
+@require_feature_flag("payment_methods")
 async def delete_payment_method(
     method_id: str,
     database=Depends(get_db),
@@ -283,6 +294,7 @@ async def delete_payment_method(
 # ========== Payment Transactions Endpoints ==========
 
 @router.post("/transactions", response_model=PaymentResponse, status_code=status.HTTP_201_CREATED)
+@require_feature_flag("stripe_payments")
 async def create_payment(
     payment: PaymentCreate,
     database=Depends(get_db),
@@ -301,6 +313,7 @@ async def create_payment(
 
 
 @router.get("/transactions/{payment_id}", response_model=PaymentResponse)
+@require_feature_flag("payment_methods")
 async def get_payment(
     payment_id: str,
     database=Depends(get_db),
@@ -318,6 +331,7 @@ async def get_payment(
 
 
 @router.get("/users/{user_id}/transactions", response_model=List[PaymentResponse])
+@require_feature_flag("payment_methods")
 async def get_user_payments(
     user_id: str,
     status: Optional[PaymentStatus] = None,
@@ -341,6 +355,7 @@ async def get_user_payments(
 
 
 @router.post("/transactions/{payment_id}/refund", response_model=PaymentRefundResponse)
+@require_feature_flag("payment_methods")
 async def refund_payment(
     payment_id: str,
     refund_data: PaymentRefundCreate,
@@ -378,6 +393,7 @@ async def refund_payment(
 
 
 @router.get("/transactions/{payment_id}/status")
+@require_feature_flag("payment_methods")
 async def get_payment_status(
     payment_id: str,
     database=Depends(get_db),
@@ -395,6 +411,7 @@ async def get_payment_status(
 # ========== Installments Endpoints ==========
 
 @router.get("/conditions/{condition_id}/installments", response_model=List[InstallmentResponse])
+@require_feature_flag("payment_conditions")
 async def get_installments(
     condition_id: str,
     database=Depends(get_db),
@@ -412,6 +429,7 @@ async def get_installments(
 
 
 @router.put("/installments/{installment_id}/pay")
+@require_feature_flag("payment_conditions")
 async def pay_installment(
     installment_id: str,
     database=Depends(get_db),
@@ -452,6 +470,7 @@ async def pay_installment(
 # ========== Invoice Endpoints ==========
 
 @router.post("/invoices", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)
+@require_feature_flag("payment_conditions")
 async def create_invoice(
     invoice: InvoiceCreate,
     database=Depends(get_db),
@@ -497,6 +516,7 @@ async def create_invoice(
 
 
 @router.get("/invoices/{invoice_id}", response_model=InvoiceResponse)
+@require_feature_flag("payment_conditions")
 async def get_invoice(
     invoice_id: str,
     database=Depends(get_db),
@@ -514,6 +534,7 @@ async def get_invoice(
 
 
 @router.get("/users/{user_id}/invoices", response_model=List[InvoiceResponse])
+@require_feature_flag("payment_conditions")
 async def get_user_invoices(
     user_id: str,
     database=Depends(get_db),
@@ -533,6 +554,7 @@ async def get_user_invoices(
 # ========== Subscription Endpoints ==========
 
 @router.post("/subscriptions", response_model=SubscriptionResponse, status_code=status.HTTP_201_CREATED)
+@require_feature_flag("subscriptions")
 async def create_subscription(
     subscription: SubscriptionCreate,
     database=Depends(get_db),
@@ -573,6 +595,7 @@ async def create_subscription(
 
 
 @router.get("/subscriptions/{subscription_id}", response_model=SubscriptionResponse)
+@require_feature_flag("subscriptions")
 async def get_subscription(
     subscription_id: str,
     database=Depends(get_db),
@@ -590,6 +613,7 @@ async def get_subscription(
 
 
 @router.post("/subscriptions/{subscription_id}/cancel")
+@require_feature_flag("subscriptions")
 async def cancel_subscription(
     subscription_id: str,
     database=Depends(get_db),
@@ -699,6 +723,7 @@ async def paypal_webhook(
 # ========== Analytics Endpoints ==========
 
 @router.get("/analytics", response_model=PaymentAnalytics)
+@require_feature_flag("payment_analytics")
 async def get_payment_analytics(
     period_start: Optional[datetime] = None,
     period_end: Optional[datetime] = None,

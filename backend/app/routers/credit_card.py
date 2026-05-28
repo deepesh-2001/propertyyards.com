@@ -33,6 +33,7 @@ from app.schemas import (
 )
 from app.credit_card import credit_card_manager, credit_card_comparator
 from app.auth import get_current_user
+from app.feature_flags import require_feature_flag
 
 router = APIRouter(prefix="/api/credit-cards", tags=["credit-cards"])
 
@@ -40,6 +41,7 @@ router = APIRouter(prefix="/api/credit-cards", tags=["credit-cards"])
 # ========== Credit Card Management Endpoints ==========
 
 @router.post("/cards", response_model=CreditCardResponse, status_code=status.HTTP_201_CREATED)
+@require_feature_flag("credit_card_management")
 async def add_credit_card(
     card: CreditCardCreate,
     database=Depends(get_db),
@@ -55,6 +57,7 @@ async def add_credit_card(
 
 
 @router.get("/cards/{card_id}", response_model=CreditCardResponse)
+@require_feature_flag("credit_card_management")
 async def get_credit_card(
     card_id: str,
     database=Depends(get_db),
@@ -72,6 +75,7 @@ async def get_credit_card(
 
 
 @router.get("/users/{user_id}/cards", response_model=List[CreditCardResponse])
+@require_feature_flag("credit_card_management")
 async def get_user_credit_cards(
     user_id: str,
     is_active: Optional[bool] = None,
@@ -96,6 +100,7 @@ async def get_user_credit_cards(
 # ========== Credit Card Application Endpoints ==========
 
 @router.post("/applications", response_model=CreditCardApplicationResponse, status_code=status.HTTP_201_CREATED)
+@require_feature_flag("credit_card_management")
 async def apply_credit_card(
     application: CreditCardApplicationCreate,
     database=Depends(get_db),
@@ -127,6 +132,7 @@ async def apply_credit_card(
 
 
 @router.post("/verify-phone", response_model=PhoneVerificationResponse)
+@require_feature_flag("credit_card_management")
 async def verify_phone(
     verification: PhoneVerification,
     database=Depends(get_db),
@@ -170,6 +176,7 @@ async def verify_phone(
 
 
 @router.post("/verify-otp", response_model=OTPVerificationResponse)
+@require_feature_flag("credit_card_management")
 async def verify_otp(
     verification: OTPVerification,
     database=Depends(get_db),
@@ -216,6 +223,7 @@ async def verify_otp(
 
 
 @router.get("/applications/{application_id}", response_model=CreditCardApplicationResponse)
+@require_feature_flag("credit_card_management")
 async def get_credit_card_application(
     application_id: str,
     database=Depends(get_db),
@@ -235,6 +243,7 @@ async def get_credit_card_application(
 # ========== Reward Transaction Endpoints ==========
 
 @router.post("/transactions", response_model=RewardTransactionResponse, status_code=status.HTTP_201_CREATED)
+@require_feature_flag("credit_card_management")
 async def record_reward_transaction(
     transaction: RewardTransactionCreate,
     database=Depends(get_db),
@@ -250,6 +259,7 @@ async def record_reward_transaction(
 
 
 @router.get("/cards/{card_id}/transactions", response_model=List[RewardTransactionResponse])
+@require_feature_flag("credit_card_management")
 async def get_card_transactions(
     card_id: str,
     transaction_type: Optional[RewardTransactionType] = None,
@@ -274,6 +284,7 @@ async def get_card_transactions(
 # ========== Cashback Endpoints ==========
 
 @router.post("/cashback", response_model=CashbackResponse, status_code=status.HTTP_201_CREATED)
+@require_feature_flag("credit_card_management")
 async def process_cashback(
     cashback: CashbackCreate,
     database=Depends(get_db),
@@ -289,6 +300,7 @@ async def process_cashback(
 
 
 @router.get("/cards/{card_id}/cashback", response_model=List[CashbackResponse])
+@require_feature_flag("credit_card_management")
 async def get_card_cashback(
     card_id: str,
     database=Depends(get_db),
@@ -308,6 +320,7 @@ async def get_card_cashback(
 # ========== Points Redemption Endpoints ==========
 
 @router.post("/redemptions", response_model=PointsRedemptionResponse, status_code=status.HTTP_201_CREATED)
+@require_feature_flag("credit_card_management")
 async def redeem_points(
     redemption: PointsRedemptionCreate,
     database=Depends(get_db),
@@ -359,6 +372,7 @@ async def redeem_points(
 
 
 @router.get("/cards/{card_id}/redemptions", response_model=List[PointsRedemptionResponse])
+@require_feature_flag("credit_card_management")
 async def get_card_redemptions(
     card_id: str,
     database=Depends(get_db),
@@ -378,6 +392,7 @@ async def get_card_redemptions(
 # ========== Credit Card Comparison Endpoints ==========
 
 @router.post("/compare", response_model=CreditCardComparison)
+@require_feature_flag("credit_card_comparison")
 async def compare_credit_cards(
     preferences: dict,
     database=Depends(get_db),
@@ -392,6 +407,7 @@ async def compare_credit_cards(
 
 
 @router.get("/best-card/{category}", response_model=CreditCardRecommendation)
+@require_feature_flag("credit_card_comparison")
 async def get_best_card_for_category(
     category: RewardCategory,
     database=Depends(get_db),
@@ -410,6 +426,7 @@ async def get_best_card_for_category(
 
 
 @router.get("/best-cashback", response_model=List[BestCreditCardCashback])
+@require_feature_flag("credit_card_comparison")
 async def get_best_credit_cards_for_cashback(
     spend_amount: float = 2000,
     category: Optional[RewardCategory] = None,
@@ -439,6 +456,7 @@ async def get_best_credit_cards_for_cashback(
 
 
 @router.get("/recommendations")
+@require_feature_flag("credit_card_comparison")
 async def get_card_recommendations(
     monthly_spend: float = 2000,
     max_annual_fee: float = 500,
@@ -463,6 +481,7 @@ async def get_card_recommendations(
 # ========== Reward Analytics Endpoints ==========
 
 @router.get("/users/{user_id}/analytics", response_model=RewardAnalytics)
+@require_feature_flag("reward_analytics")
 async def get_reward_analytics(
     user_id: str,
     start_date: Optional[datetime] = None,
@@ -484,6 +503,7 @@ async def get_reward_analytics(
 
 
 @router.get("/users/{user_id}/returns/monthly")
+@require_feature_flag("reward_analytics")
 async def get_monthly_cashback_returns(
     user_id: str,
     year: Optional[int] = None,

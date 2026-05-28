@@ -16,6 +16,7 @@ from app.schemas import (
 )
 from app.auth import decode_token
 from app.cache import get_from_cache, set_in_cache, delete_from_cache, generate_cache_key, invalidate_cache_pattern
+from app.feature_flags import require_feature_flag
 import logging
 from typing import Optional
 import json
@@ -42,6 +43,7 @@ def get_current_user_from_header(authorization: str = None) -> dict:
 
 
 @router.post("", response_model=PropertyResponse)
+@require_feature_flag("property_management")
 async def create_property(
     property_data: PropertyCreate,
     authorization: str = None,
@@ -87,6 +89,7 @@ async def create_property(
 
 
 @router.get("", response_model=PaginatedResponse)
+@require_feature_flag("property_search")
 async def list_properties(
     page: int = 1,
     limit: int = 20,
@@ -126,6 +129,7 @@ async def list_properties(
 
 
 @router.get("/search", response_model=PaginatedResponse)
+@require_feature_flag("property_search")
 async def search_properties(
     filters: PropertySearchFilters = Depends(),
     db: Session = Depends(get_db)
@@ -207,6 +211,7 @@ async def search_properties(
 
 
 @router.get("/{property_id}", response_model=PropertyResponse)
+@require_feature_flag("property_search")
 async def get_property(property_id: str, db: Session = Depends(get_db)):
     """Get property details"""
     # Check cache
@@ -233,6 +238,7 @@ async def get_property(property_id: str, db: Session = Depends(get_db)):
 
 
 @router.put("/{property_id}", response_model=PropertyResponse)
+@require_feature_flag("property_management")
 async def update_property(
     property_id: str,
     property_update: PropertyUpdate,
@@ -273,6 +279,7 @@ async def update_property(
 
 
 @router.delete("/{property_id}")
+@require_feature_flag("property_management")
 async def delete_property(
     property_id: str,
     authorization: str = None,
@@ -306,6 +313,7 @@ async def delete_property(
 
 
 @router.post("/{property_id}/wishlist")
+@require_feature_flag("property_wishlist")
 async def add_to_wishlist(
     property_id: str,
     authorization: str = None,
@@ -347,6 +355,7 @@ async def add_to_wishlist(
 
 
 @router.delete("/{property_id}/wishlist")
+@require_feature_flag("property_wishlist")
 async def remove_from_wishlist(
     property_id: str,
     authorization: str = None,

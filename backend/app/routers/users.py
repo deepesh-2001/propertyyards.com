@@ -9,6 +9,7 @@ from app.models import User, Property, Inquiry, Wishlist
 from app.schemas import UserResponse, UserUpdate, UserProfileResponse, PaginatedResponse
 from app.auth import decode_token
 from app.cache import get_from_cache, set_in_cache, delete_from_cache, generate_cache_key, invalidate_cache_pattern
+from app.feature_flags import require_feature_flag
 import logging
 from typing import Optional
 
@@ -30,6 +31,7 @@ def get_current_user(token: str = None) -> dict:
 
 
 @router.get("/me", response_model=UserProfileResponse)
+@require_feature_flag("user_management")
 async def get_current_user_profile(
     authorization: str = None,
     db: Session = Depends(get_db)
@@ -83,6 +85,7 @@ async def get_current_user_profile(
 
 
 @router.put("/me", response_model=UserResponse)
+@require_feature_flag("user_management")
 async def update_current_user_profile(
     user_update: UserUpdate,
     authorization: str = None,
@@ -123,6 +126,7 @@ async def update_current_user_profile(
 
 
 @router.get("/{user_id}", response_model=UserProfileResponse)
+@require_feature_flag("user_management")
 async def get_user_by_id(
     user_id: str,
     db: Session = Depends(get_db)
@@ -164,6 +168,7 @@ async def get_user_by_id(
 
 
 @router.get("/{user_id}/properties", response_model=PaginatedResponse)
+@require_feature_flag("user_management")
 async def get_user_properties(
     user_id: str,
     page: int = 1,

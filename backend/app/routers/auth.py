@@ -12,6 +12,7 @@ from app.auth import (
     create_refresh_token,
     decode_token
 )
+from app.feature_flags import require_feature_flag
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,6 +21,7 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
 @router.post("/register", response_model=UserResponse)
+@require_feature_flag("user_registration")
 async def register(user_data: UserCreate, db = Depends(get_database)):
     """Register a new user"""
     # Check if user already exists
@@ -48,6 +50,7 @@ async def register(user_data: UserCreate, db = Depends(get_database)):
 
 
 @router.post("/login", response_model=TokenResponse)
+@require_feature_flag("user_management")
 async def login(credentials: TokenRequest, db = Depends(get_database)):
     """Login user and get tokens"""
     # Find user
@@ -78,6 +81,7 @@ async def login(credentials: TokenRequest, db = Depends(get_database)):
 
 
 @router.post("/refresh", response_model=TokenResponse)
+@require_feature_flag("user_management")
 async def refresh_token(token_request: RefreshTokenRequest, db = Depends(get_database)):
     """Refresh access token using refresh token"""
     token_data = decode_token(token_request.refresh_token)

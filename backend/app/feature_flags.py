@@ -226,6 +226,500 @@ class FeatureFlagManager:
                 is_enabled=True,
                 enabled_for_roles=["admin"]
             ),
+
+            # User management features
+            "user_management": FeatureFlag(
+                key="user_management",
+                name="User Management",
+                description="Enable user profile management",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+            "user_registration": FeatureFlag(
+                key="user_registration",
+                name="User Registration",
+                description="Enable new user registration",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+
+            # Property management features
+            "property_management": FeatureFlag(
+                key="property_management",
+                name="Property Management",
+                description="Enable property listing management",
+                is_enabled=True,
+                enabled_for_roles=["admin", "agent", "seller"]
+            ),
+            "property_search": FeatureFlag(
+                key="property_search",
+                name="Property Search",
+                description="Enable property search and filtering",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+            "property_wishlist": FeatureFlag(
+                key="property_wishlist",
+                name="Property Wishlist",
+                description="Enable property wishlist functionality",
+                is_enabled=True,
+                enabled_for_roles=["buyer"]
+            ),
+
+            # CRM features
+            "crm_system": FeatureFlag(
+                key="crm_system",
+                name="CRM System",
+                description="Enable CRM lead management",
+                is_enabled=True,
+                enabled_for_roles=["admin", "agent"]
+            ),
+            "crm_pipeline": FeatureFlag(
+                key="crm_pipeline",
+                name="CRM Pipeline",
+                description="Enable CRM pipeline tracking",
+                is_enabled=True,
+                enabled_for_roles=["admin", "agent"]
+            ),
+
+            # Additional payment features
+            "payment_conditions": FeatureFlag(
+                key="payment_conditions",
+                name="Payment Conditions",
+                description="Enable payment condition management",
+                is_enabled=True,
+                enabled_for_roles=["admin", "seller", "buyer"]
+            ),
+            "payment_methods": FeatureFlag(
+                key="payment_methods",
+                name="Payment Methods",
+                description="Enable payment method management",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+            "payment_analytics": FeatureFlag(
+                key="payment_analytics",
+                name="Payment Analytics",
+                description="Enable payment analytics and reporting",
+                is_enabled=True,
+                enabled_for_roles=["admin"]
+            ),
+            "subscriptions": FeatureFlag(
+                key="subscriptions",
+                name="Subscriptions",
+                description="Enable subscription management",
+                is_enabled=True,
+                enabled_for_roles=["admin", "buyer"]
+            ),
+
+            # Additional credit card features
+            "credit_card_management": FeatureFlag(
+                key="credit_card_management",
+                name="Credit Card Management",
+                description="Enable credit card management",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+            "credit_card_comparison": FeatureFlag(
+                key="credit_card_comparison",
+                name="Credit Card Comparison",
+                description="Enable credit card comparison tools",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+            "reward_analytics": FeatureFlag(
+                key="reward_analytics",
+                name="Reward Analytics",
+                description="Enable reward points analytics",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+
+            # Broker features
+            "broker_management": FeatureFlag(
+                key="broker_management",
+                name="Broker Management",
+                description="Enable broker profile management",
+                is_enabled=True,
+                enabled_for_roles=["admin", "agent"]
+            ),
+
+            # Inquiry features
+            "inquiry_management": FeatureFlag(
+                key="inquiry_management",
+                name="Inquiry Management",
+                description="Enable property inquiry management",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+
+            # Feedback and reviews
+            "feedback_system": FeatureFlag(
+                key="feedback_system",
+                name="Feedback System",
+                description="Enable user feedback system",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+            "review_system": FeatureFlag(
+                key="review_system",
+                name="Review System",
+                description="Enable property and broker reviews",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+
+            # Claims and reimbursement
+            "claims_management": FeatureFlag(
+                key="claims_management",
+                name="Claims Management",
+                description="Enable claims management",
+                is_enabled=True,
+                enabled_for_roles=["admin", "hr"]
+            ),
+            "reimbursement_system": FeatureFlag(
+                key="reimbursement_system",
+                name="Reimbursement System",
+                description="Enable reimbursement management",
+                is_enabled=True,
+                enabled_for_roles=["admin", "hr"]
+            ),
+
+            # Recruitment features
+            "recruitment_system": FeatureFlag(
+                key="recruitment_system",
+                name="Recruitment System",
+                description="Enable recruitment management",
+                is_enabled=True,
+                enabled_for_roles=["admin", "hr"]
+            ),
+            "interview_scheduling": FeatureFlag(
+                key="interview_scheduling",
+                name="Interview Scheduling",
+                description="Enable interview scheduling",
+                is_enabled=True,
+                enabled_for_roles=["admin", "hr"]
+            ),
+
+            # Attendance and performance
+            "attendance_tracking": FeatureFlag(
+                key="attendance_tracking",
+                name="Attendance Tracking",
+                description="Enable attendance tracking",
+                is_enabled=True,
+                enabled_for_roles=["admin", "hr"]
+            ),
+            "performance_tracking": FeatureFlag(
+                key="performance_tracking",
+                name="Performance Tracking",
+                description="Enable performance tracking",
+                is_enabled=True,
+                enabled_for_roles=["admin", "hr"]
+            ),
+
+            # Reports and analytics
+            "reporting_system": FeatureFlag(
+                key="reporting_system",
+                name="Reporting System",
+                description="Enable reporting system",
+                is_enabled=True,
+                enabled_for_roles=["admin", "hr"]
+            ),
+
+            # Loan calculator
+            "loan_calculator": FeatureFlag(
+                key="loan_calculator",
+                name="Loan Calculator",
+                description="Enable loan calculator",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+
+            # Chatbot
+            "chatbot": FeatureFlag(
+                key="chatbot",
+                name="AI Chatbot",
+                description="Enable AI chatbot assistance",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+
+            # Fraud detection
+            "fraud_detection": FeatureFlag(
+                key="fraud_detection",
+                name="Fraud Detection",
+                description="Enable fraud detection system",
+                is_enabled=True,
+                enabled_for_roles=["admin"]
+            ),
+
+            # Self healing
+            "self_healing": FeatureFlag(
+                key="self_healing",
+                name="Self Healing",
+                description="Enable self-healing system",
+                is_enabled=True,
+                enabled_for_roles=["admin"]
+            ),
+
+            # Monitoring
+            "system_monitoring": FeatureFlag(
+                key="system_monitoring",
+                name="System Monitoring",
+                description="Enable system monitoring",
+                is_enabled=True,
+                enabled_for_roles=["admin"]
+            ),
+
+            # Notifications
+            "notification_system": FeatureFlag(
+                key="notification_system",
+                name="Notification System",
+                description="Enable notification system",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+
+            # Referral system
+            "referral_system": FeatureFlag(
+                key="referral_system",
+                name="Referral System",
+                description="Enable referral system",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+
+            # Tax management
+            "tax_management": FeatureFlag(
+                key="tax_management",
+                name="Tax Management",
+                description="Enable tax management",
+                is_enabled=True,
+                enabled_for_roles=["admin", "hr"]
+            ),
+
+            # Salary management
+            "salary_management": FeatureFlag(
+                key="salary_management",
+                name="Salary Management",
+                description="Enable salary management",
+                is_enabled=True,
+                enabled_for_roles=["admin", "hr"]
+            ),
+
+            # Prediction and AI
+            "price_prediction": FeatureFlag(
+                key="price_prediction",
+                name="Price Prediction",
+                description="Enable AI price prediction",
+                is_enabled=True,
+                enabled_for_roles=["admin", "agent"]
+            ),
+
+            # Access control
+            "access_control": FeatureFlag(
+                key="access_control",
+                name="Access Control",
+                description="Enable advanced access control",
+                is_enabled=True,
+                enabled_for_roles=["admin"]
+            ),
+
+            # Contact management
+            "contact_management": FeatureFlag(
+                key="contact_management",
+                name="Contact Management",
+                description="Enable contact management",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+
+            # Privacy features
+            "privacy_settings": FeatureFlag(
+                key="privacy_settings",
+                name="Privacy Settings",
+                description="Enable user privacy settings management",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+            "data_export": FeatureFlag(
+                key="data_export",
+                name="Data Export",
+                description="Enable user data export functionality",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+            "data_deletion": FeatureFlag(
+                key="data_deletion",
+                name="Data Deletion",
+                description="Enable user data deletion (GDPR compliance)",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+            "privacy_dashboard": FeatureFlag(
+                key="privacy_dashboard",
+                name="Privacy Dashboard",
+                description="Enable privacy dashboard for users",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+
+            # Content security features
+            "content_moderation": FeatureFlag(
+                key="content_moderation",
+                name="Content Moderation",
+                description="Enable content moderation system",
+                is_enabled=True,
+                enabled_for_roles=["admin"]
+            ),
+            "spam_detection": FeatureFlag(
+                key="spam_detection",
+                name="Spam Detection",
+                description="Enable spam detection and filtering",
+                is_enabled=True,
+                enabled_for_roles=["admin"]
+            ),
+            "content_filtering": FeatureFlag(
+                key="content_filtering",
+                name="Content Filtering",
+                description="Enable content filtering for inappropriate content",
+                is_enabled=True,
+                enabled_for_roles=["admin"]
+            ),
+            "rate_limiting": FeatureFlag(
+                key="rate_limiting",
+                name="Rate Limiting",
+                description="Enable API rate limiting",
+                is_enabled=True,
+                enabled_for_roles=["admin"]
+            ),
+
+            # User permissions features
+            "role_management": FeatureFlag(
+                key="role_management",
+                name="Role Management",
+                description="Enable role-based access control management",
+                is_enabled=True,
+                enabled_for_roles=["admin"]
+            ),
+            "permission_management": FeatureFlag(
+                key="permission_management",
+                name="Permission Management",
+                description="Enable granular permission management",
+                is_enabled=True,
+                enabled_for_roles=["admin"]
+            ),
+            "user_audit_logs": FeatureFlag(
+                key="user_audit_logs",
+                name="User Audit Logs",
+                description="Enable user activity audit logs",
+                is_enabled=True,
+                enabled_for_roles=["admin"]
+            ),
+            "access_control": FeatureFlag(
+                key="access_control",
+                name="Access Control",
+                description="Enable advanced access control",
+                is_enabled=True,
+                enabled_for_roles=["admin"]
+            ),
+
+            # Future projects features
+            "beta_features": FeatureFlag(
+                key="beta_features",
+                name="Beta Features",
+                description="Enable beta features for testing",
+                is_enabled=False,
+                enabled_for_roles=["admin"]
+            ),
+            "experimental_features": FeatureFlag(
+                key="experimental_features",
+                name="Experimental Features",
+                description="Enable experimental features",
+                is_enabled=False,
+                enabled_for_roles=["admin"]
+            ),
+            "future_projects": FeatureFlag(
+                key="future_projects",
+                name="Future Projects",
+                description="Enable access to future project previews",
+                is_enabled=False,
+                enabled_for_roles=["admin"]
+            ),
+            "early_access": FeatureFlag(
+                key="early_access",
+                name="Early Access",
+                description="Enable early access to new features",
+                is_enabled=False,
+                enabled_for_roles=["admin", "premium"]
+            ),
+
+            # Admin analytics features
+            "admin_analytics": FeatureFlag(
+                key="admin_analytics",
+                name="Admin Analytics",
+                description="Enable comprehensive admin analytics dashboard",
+                is_enabled=True,
+                enabled_for_roles=["admin"]
+            ),
+            "user_activity_analytics": FeatureFlag(
+                key="user_activity_analytics",
+                name="User Activity Analytics",
+                description="Enable user activity tracking and analytics",
+                is_enabled=True,
+                enabled_for_roles=["admin"]
+            ),
+            "revenue_analytics": FeatureFlag(
+                key="revenue_analytics",
+                name="Revenue Analytics",
+                description="Enable revenue and financial analytics",
+                is_enabled=True,
+                enabled_for_roles=["admin"]
+            ),
+            "performance_analytics": FeatureFlag(
+                key="performance_analytics",
+                name="Performance Analytics",
+                description="Enable system performance analytics",
+                is_enabled=True,
+                enabled_for_roles=["admin"]
+            ),
+            "security_analytics": FeatureFlag(
+                key="security_analytics",
+                name="Security Analytics",
+                description="Enable security event analytics",
+                is_enabled=True,
+                enabled_for_roles=["admin"]
+            ),
+
+            # User analytics features
+            "user_analytics": FeatureFlag(
+                key="user_analytics",
+                name="User Analytics",
+                description="Enable personal user analytics dashboard",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+            "usage_analytics": FeatureFlag(
+                key="usage_analytics",
+                name="Usage Analytics",
+                description="Enable usage statistics for users",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+            "engagement_analytics": FeatureFlag(
+                key="engagement_analytics",
+                name="Engagement Analytics",
+                description="Enable engagement metrics for users",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
+            "personal_insights": FeatureFlag(
+                key="personal_insights",
+                name="Personal Insights",
+                description="Enable AI-powered personal insights",
+                is_enabled=True,
+                enabled_for_roles=["all"]
+            ),
         }
 
     async def get_flag(self, key: str, database) -> Optional[FeatureFlag]:

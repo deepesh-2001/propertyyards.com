@@ -10,6 +10,7 @@ from app.schemas import (
     PipelineSummary, PaginatedResponse
 )
 from app.auth import decode_token
+from app.feature_flags import require_feature_flag
 import logging
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,7 @@ def get_current_user(authorization: str = None) -> dict:
 
 
 @router.post("/leads", response_model=LeadResponse)
+@require_feature_flag("crm_system")
 async def create_lead(
     lead_data: LeadCreate,
     authorization: str = None,
@@ -50,6 +52,7 @@ async def create_lead(
 
 
 @router.get("/leads/{lead_id}", response_model=LeadResponse)
+@require_feature_flag("crm_system")
 async def get_lead(
     lead_id: str,
     authorization: str = None,
@@ -68,6 +71,7 @@ async def get_lead(
 
 
 @router.put("/leads/{lead_id}", response_model=LeadResponse)
+@require_feature_flag("crm_system")
 async def update_lead(
     lead_id: str,
     lead_update: LeadUpdate,
@@ -88,6 +92,7 @@ async def update_lead(
 
 
 @router.delete("/leads/{lead_id}")
+@require_feature_flag("crm_system")
 async def delete_lead(
     lead_id: str,
     authorization: str = None,
@@ -106,6 +111,7 @@ async def delete_lead(
 
 
 @router.get("/leads", response_model=PaginatedResponse)
+@require_feature_flag("crm_system")
 async def list_leads(
     status: LeadStatus = None,
     source: LeadSource = None,
@@ -148,6 +154,7 @@ async def list_leads(
 
 
 @router.post("/leads/{lead_id}/interactions")
+@require_feature_flag("crm_system")
 async def add_interaction(
     lead_id: str,
     interaction: InteractionCreate,
@@ -172,6 +179,7 @@ async def add_interaction(
 
 
 @router.put("/leads/{lead_id}/status")
+@require_feature_flag("crm_pipeline")
 async def update_lead_status(
     lead_id: str,
     status: LeadStatus,
@@ -191,6 +199,7 @@ async def update_lead_status(
 
 
 @router.get("/pipeline/summary", response_model=PipelineSummary)
+@require_feature_flag("crm_pipeline")
 async def get_pipeline_summary(
     authorization: str = None,
     db = Depends(get_database)
@@ -205,6 +214,7 @@ async def get_pipeline_summary(
 
 
 @router.get("/activities")
+@require_feature_flag("crm_system")
 async def get_user_activities(
     page: int = 1,
     limit: int = 50,
