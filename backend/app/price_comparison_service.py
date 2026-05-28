@@ -445,3 +445,4 @@ class PriceComparisonService:
 
 # Global instance
 price_comparison = PriceComparisonService()
+price_comparison_service = price_comparison

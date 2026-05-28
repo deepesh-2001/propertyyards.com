@@ -334,6 +334,20 @@ class ServiceManager:
 
         return region_manager
 
+    async def _init_flight_comparison(self, database, settings):
+        """Initialize flight comparison service"""
+        from app.flight_comparison_service import flight_comparison_service
+        await flight_comparison_service.initialize()
+        logger.info("Flight Comparison Service initialized")
+        return flight_comparison_service
+
+    async def _init_price_comparison(self, database, settings):
+        """Initialize price comparison service"""
+        from app.price_comparison_service import price_comparison_service
+        await price_comparison_service.initialize()
+        logger.info("Price Comparison Service initialized")
+        return price_comparison_service
+
     async def _init_usage_tracker(self, database, settings):
         """Initialize usage tracker"""
         from app.usage_tracker import usage_tracker

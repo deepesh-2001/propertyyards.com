@@ -89,3 +89,8 @@ def generate_cache_key(*args) -> str:
     """Generate cache key from multiple arguments"""
     return ":".join(str(arg) for arg in args)
 
+
+# Aliases for backward compatibility
+get_cache = get_from_cache
+set_cache = set_in_cache
+

@@ -5,6 +5,7 @@ Single entry point for all services with proper monolithic architecture
 import asyncio
 import logging
 from datetime import datetime
+from typing import Dict
 
 from app.config import settings
 from app.database import init_database, close_database, get_db

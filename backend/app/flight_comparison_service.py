@@ -397,3 +397,4 @@ class FlightComparisonService:
 
 # Global instance
 flight_comparison = FlightComparisonService()
+flight_comparison_service = flight_comparison
