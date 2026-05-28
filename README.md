@@ -47,6 +47,14 @@ HR onboarding/offboarding, attendance, notifications, monitoring
 ### 🛡️ Insurance (NEW)
 Health, Life, Property, Home insurance scraped from web with sales integration
 
+### ⚡ Optimized Background (NEW)
+- **Idle-time AI Processing** — Beautiful content generated when system idle
+- **Sales Fetching** — Limited to 4 times per day (2 AM, 8 AM, 2 PM, 8 PM)
+- **Smart Scheduling** — Tasks run only when load < 30%
+- **AI Content** — Auto-generate property descriptions, social posts, images
+- **Cache Maintenance** — Background cache warming & cleanup
+- **Database Optimization** — Index rebuilds during low usage
+
 ---
 
 ## Architecture
