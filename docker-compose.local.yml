@@ -1,0 +1,102 @@
+services:
+
+  # ── MongoDB ──────────────────────────────────────────────
+  mongodb:
+    image: mongo:7
+    container_name: housing_mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-localpassword}
+      MONGO_INITDB_DATABASE: housing_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - housing_network
+    restart: unless-stopped
+
+  # ── Redis ─────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: housing_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD:-localpassword}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-localpassword}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - housing_network
+    restart: unless-stopped
+
+  # ── FastAPI Backend ───────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: housing_backend
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: mongodb://admin:${MONGO_ROOT_PASSWORD:-localpassword}@mongodb:27017/housing_db?authSource=admin
+      REDIS_URL: redis://:${REDIS_PASSWORD:-localpassword}@redis:6379
+      ENVIRONMENT: development
+    ports:
+      - "8000:8000"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - housing_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ── React Frontend ────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: housing_frontend
+    environment:
+      VITE_API_URL: http://localhost:8000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host
+    networks:
+      - housing_network
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  housing_network:
+    driver: bridge
