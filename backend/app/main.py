@@ -210,6 +210,49 @@ async def services_status():
     return service_manager.get_all_status()
 
 
+# Server Monitoring Endpoints
+@app.get("/monitoring/performance")
+async def get_performance_stats():
+    """Get API performance statistics"""
+    from app.server_monitoring import performance_monitor
+    return performance_monitor.get_stats()
+
+
+@app.get("/monitoring/system")
+async def get_system_stats():
+    """Get system resource statistics"""
+    from app.server_monitoring import system_monitor
+    return system_monitor.get_system_stats()
+
+
+@app.get("/monitoring/cache")
+async def get_cache_stats():
+    """Get cache performance statistics"""
+    from app.server_monitoring import cache_monitor
+    return cache_monitor.get_stats()
+
+
+@app.get("/monitoring/database")
+async def get_database_stats():
+    """Get database performance statistics"""
+    from app.server_monitoring import database_monitor
+    return database_monitor.get_stats()
+
+
+@app.get("/monitoring/health")
+async def get_full_health():
+    """Get comprehensive health check"""
+    from app.server_monitoring import HealthChecker
+    return await HealthChecker.full_health_check()
+
+
+@app.get("/monitoring/alerts")
+async def get_system_alerts():
+    """Get current system alerts"""
+    from app.server_monitoring import system_monitor
+    return {"alerts": await system_monitor.check_alerts()}
+
+
 # API Info
 @app.get("/api/info")
 async def api_info():
