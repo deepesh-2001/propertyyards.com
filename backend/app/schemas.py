@@ -31,6 +31,13 @@ class UserUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     phone_number: Optional[str] = None
+    # Access control flags
+    is_enabled: Optional[bool] = None
+    access_restricted: Optional[bool] = None
+    can_post_properties: Optional[bool] = None
+    can_contact_agents: Optional[bool] = None
+    can_apply_loans: Optional[bool] = None
+    can_apply_credit_cards: Optional[bool] = None
 
 
 class UserResponse(UserBase):
@@ -98,6 +105,11 @@ class PropertyCreate(BaseModel):
     broker_id: Optional[str] = None
     broker_name: Optional[str] = None
     broker_phone: Optional[str] = None
+    # Enable/Disable flags
+    is_enabled: bool = True
+    access_restricted: bool = False
+    featured: bool = False
+    premium_listing: bool = False
     broker_email: Optional[EmailStr] = None
     broker_commission: Optional[float] = None
 
@@ -123,6 +135,11 @@ class PropertyUpdate(BaseModel):
     broker_phone: Optional[str] = None
     broker_email: Optional[EmailStr] = None
     broker_commission: Optional[float] = None
+    # Enable/Disable flags
+    is_enabled: Optional[bool] = None
+    access_restricted: Optional[bool] = None
+    featured: Optional[bool] = None
+    premium_listing: Optional[bool] = None
 
 
 class PropertyResponse(PropertyCreate):
@@ -1780,6 +1797,8 @@ class CommissionType(str, Enum):
     BROKERAGE = "brokerage"
     PERFORMANCE = "performance"
     TARGET_BONUS = "target_bonus"
+    BUILDER_PROPERTY = "builder_property"
+    LOAN_COMMISSION = "loan_commission"
 
 
 class CommissionStatus(str, Enum):
@@ -2114,4 +2133,1276 @@ class ReviewResponse(BaseModel):
     helpful_count: int
     created_at: datetime
     updated_at: datetime
+
+
+# ========== Credit Card and Reward Points Schemas ==========
+class CreditCardType(str, Enum):
+    CASHBACK = "cashback"
+    TRAVEL = "travel"
+    REWARDS = "rewards"
+    AIRLINE = "airline"
+    HOTEL = "hotel"
+    FUEL = "fuel"
+    SHOPPING = "shopping"
+    DINING = "dining"
+    ENTERTAINMENT = "entertainment"
+    BUSINESS = "business"
+    STUDENT = "student"
+
+
+class CreditCardTier(str, Enum):
+    BASIC = "basic"
+    SILVER = "silver"
+    GOLD = "gold"
+    PLATINUM = "platinum"
+    TITANIUM = "titanium"
+    SIGNATURE = "signature"
+    INFINITE = "infinite"
+
+
+class RewardCategory(str, Enum):
+    TRAVEL = "travel"
+    DINING = "dining"
+    SHOPPING = "shopping"
+    FUEL = "fuel"
+    GROCERY = "grocery"
+    ENTERTAINMENT = "entertainment"
+    UTILITIES = "utilities"
+    INSURANCE = "insurance"
+    EDUCATION = "education"
+    HEALTHCARE = "healthcare"
+    ONLINE = "online"
+    INTERNATIONAL = "international"
+
+
+class CreditCardCreate(BaseModel):
+    user_id: str
+    card_name: str
+    bank_name: str
+    card_type: CreditCardType
+    tier: CreditCardTier
+    card_number_last_4: str = Field(..., min_length=4, max_length=4)
+    credit_limit: float = Field(..., gt=0)
+    annual_fee: float = Field(0, ge=0)
+    interest_rate: float = Field(..., ge=0, le=100)
+    reward_rate: float = Field(..., ge=0, le=100)
+    reward_categories: List[RewardCategory]
+    welcome_bonus_points: Optional[int] = Field(0, ge=0)
+    welcome_bonus_spend: Optional[float] = Field(0, ge=0)
+    points_expiry_months: Optional[int] = Field(24, ge=1)
+    is_active: bool = True
+    phone_number: str = Field(..., min_length=10, max_length=15)
+    email: str
+
+
+class CreditCardApplicationCreate(BaseModel):
+    user_id: str
+    card_name: str
+    bank_name: str
+    card_type: CreditCardType
+    tier: CreditCardTier
+    credit_limit_requested: float = Field(..., gt=0)
+    annual_income: float = Field(..., gt=0)
+    employment_type: str
+    employer_name: Optional[str] = None
+    employment_duration_months: int = Field(0, ge=0)
+    phone_number: str = Field(..., min_length=10, max_length=15)
+    email: str
+    pan_number: Optional[str] = None
+    aadhaar_number: Optional[str] = None
+    address: str
+    city: str
+    state: str
+    pincode: str = Field(..., min_length=6, max_length=6)
+    terms_accepted: bool = True
+
+
+class CreditCardApplicationResponse(BaseModel):
+    id: str
+    user_id: str
+    user_name: str
+    card_name: str
+    bank_name: str
+    card_type: CreditCardType
+    tier: CreditCardTier
+    credit_limit_requested: float
+    credit_limit_approved: Optional[float]
+    annual_income: float
+    employment_type: str
+    employer_name: Optional[str]
+    employment_duration_months: int
+    phone_number: str
+    email: str
+    pan_number: Optional[str]
+    address: str
+    city: str
+    state: str
+    pincode: str
+    status: str  # pending, under_review, approved, rejected
+    phone_verified: bool
+    email_verified: bool
+    credit_score: Optional[int]
+    rejection_reason: Optional[str]
+    approved_by: Optional[str]
+    approved_at: Optional[datetime]
+    created_at: datetime
+    updated_at: datetime
+
+
+class PhoneVerification(BaseModel):
+    phone_number: str
+    country_code: str = "+91"
+    verification_method: str = "sms"  # sms, voice
+
+
+class PhoneVerificationResponse(BaseModel):
+    verification_id: str
+    phone_number: str
+    status: str
+    otp_sent: bool
+    expires_at: datetime
+    created_at: datetime
+
+
+class OTPVerification(BaseModel):
+    verification_id: str
+    otp: str = Field(..., min_length=6, max_length=6)
+
+
+class OTPVerificationResponse(BaseModel):
+    verified: bool
+    phone_number: str
+    verified_at: datetime
+
+
+class CreditCardResponse(BaseModel):
+    id: str
+    user_id: str
+    user_name: str
+    card_name: str
+    bank_name: str
+    card_type: CreditCardType
+    tier: CreditCardTier
+    card_number_last_4: str
+    credit_limit: float
+    annual_fee: float
+    interest_rate: float
+    reward_rate: float
+    reward_categories: List[RewardCategory]
+    welcome_bonus_points: int
+    welcome_bonus_spend: float
+    points_expiry_months: int
+    current_balance: float
+    available_credit: float
+    total_points_earned: int
+    total_points_redeemed: int
+    points_balance: int
+    is_active: bool
+    issued_date: datetime
+    expiry_date: datetime
+    created_at: datetime
+    updated_at: datetime
+
+
+class RewardTransactionType(str, Enum):
+    EARNED = "earned"
+    REDEEMED = "redeemed"
+    EXPIRED = "expired"
+    BONUS = "bonus"
+    ADJUSTMENT = "adjustment"
+
+
+class RewardTransactionCreate(BaseModel):
+    credit_card_id: str
+    transaction_type: RewardTransactionType
+    points: int
+    amount: float = Field(..., gt=0)
+    category: Optional[RewardCategory] = None
+    description: Optional[str] = None
+    merchant: Optional[str] = None
+
+
+class RewardTransactionResponse(BaseModel):
+    id: str
+    credit_card_id: str
+    card_name: str
+    transaction_type: RewardTransactionType
+    points: int
+    amount: float
+    category: Optional[RewardCategory]
+    description: Optional[str]
+    merchant: Optional[str]
+    points_value: float  # Monetary value of points
+    transaction_date: datetime
+    created_at: datetime
+
+
+class CashbackCreate(BaseModel):
+    credit_card_id: str
+    amount: float = Field(..., gt=0)
+    category: RewardCategory
+    cashback_rate: float = Field(..., ge=0, le=100)
+    description: Optional[str] = None
+
+
+class CashbackResponse(BaseModel):
+    id: str
+    credit_card_id: str
+    card_name: str
+    amount: float
+    category: RewardCategory
+    cashback_rate: float
+    points_used: int
+    points_value: float
+    description: Optional[str]
+    status: str
+    processed_date: datetime
+    created_at: datetime
+
+
+class CreditCardRecommendation(BaseModel):
+    card_name: str
+    bank_name: str
+    card_type: CreditCardType
+    tier: CreditCardTier
+    annual_fee: float
+    reward_rate: float
+    reward_categories: List[RewardCategory]
+    welcome_bonus_points: int
+    welcome_bonus_spend: float
+    match_score: float  # 0-100 based on user preferences
+    estimated_annual_rewards: float
+    pros: List[str]
+    cons: List[str]
+    best_for: List[str]
+
+
+class CreditCardComparison(BaseModel):
+    cards: List[CreditCardRecommendation]
+    comparison_criteria: List[str]
+    recommendation: str
+    best_card: CreditCardRecommendation
+
+
+class PointsRedemptionCreate(BaseModel):
+    credit_card_id: str
+    points: int = Field(..., gt=0)
+    redemption_type: str  # cashback, travel, gift_card, merchandise
+    redemption_value: float = Field(..., gt=0)
+    description: Optional[str] = None
+
+
+class PointsRedemptionResponse(BaseModel):
+    id: str
+    credit_card_id: str
+    card_name: str
+    points_redeemed: int
+    redemption_type: str
+    redemption_value: float
+    points_value: float  # Value per point
+    description: Optional[str]
+    status: str
+    processed_date: datetime
+    created_at: datetime
+
+
+class RewardAnalytics(BaseModel):
+    total_points_earned: int
+    total_points_redeemed: int
+    points_balance: int
+    total_cashback_earned: float
+    average_points_per_transaction: float
+    top_spending_categories: List[Dict[str, Any]]
+    monthly_trend: List[Dict[str, Any]]
+    best_card_for_rewards: Optional[str]
+    period_start: datetime
+    period_end: datetime
+
+
+# ========== Returns Tracking Schemas ==========
+class ReturnPeriod(str, Enum):
+    MONTHLY = "monthly"
+    QUARTERLY = "quarterly"
+    YEARLY = "yearly"
+    TOTAL = "total"
+
+
+class ReturnType(str, Enum):
+    COMMISSION = "commission"
+    CASHBACK = "cashback"
+    INVESTMENT = "investment"
+    REWARD_POINTS = "reward_points"
+
+
+class ReturnRecordCreate(BaseModel):
+    user_id: str
+    return_type: ReturnType
+    period: ReturnPeriod
+    period_start: datetime
+    period_end: datetime
+    amount: float = Field(..., ge=0)
+    currency: str = "USD"
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class ReturnRecordResponse(BaseModel):
+    id: str
+    user_id: str
+    user_name: str
+    return_type: ReturnType
+    period: ReturnPeriod
+    period_start: datetime
+    period_end: datetime
+    amount: float
+    currency: str
+    growth_rate: Optional[float]
+    previous_period_amount: Optional[float]
+    metadata: Dict[str, Any]
+    created_at: datetime
+    updated_at: datetime
+
+
+class MonthlyReturns(BaseModel):
+    month: str  # YYYY-MM
+    commission_returns: float
+    cashback_returns: float
+    total_returns: float
+    growth_rate: float
+    transaction_count: int
+    created_at: datetime
+
+
+class QuarterlyReturns(BaseModel):
+    quarter: str  # YYYY-Q1/Q2/Q3/Q4
+    year: int
+    quarter_number: int
+    commission_returns: float
+    cashback_returns: float
+    total_returns: float
+    growth_rate: float
+    transaction_count: int
+    created_at: datetime
+
+
+class YearlyReturns(BaseModel):
+    year: int
+    commission_returns: float
+    cashback_returns: float
+    total_returns: float
+    growth_rate: float
+    transaction_count: int
+    average_monthly_returns: float
+    created_at: datetime
+
+
+class TotalReturns(BaseModel):
+    user_id: str
+    user_name: str
+    total_commission_returns: float
+    total_cashback_returns: float
+    total_investment_returns: float
+    total_reward_points: int
+    total_returns: float
+    first_return_date: datetime
+    last_return_date: datetime
+    average_monthly_returns: float
+    average_quarterly_returns: float
+    cagr: Optional[float]  # Compound Annual Growth Rate
+    created_at: datetime
+
+
+class ReturnsComparison(BaseModel):
+    current_period: str
+    previous_period: str
+    current_returns: float
+    previous_returns: float
+    growth_rate: float
+    growth_amount: float
+    trend: str  # up, down, stable
+
+
+# ========== Attendance and Timing Schemas ==========
+class AttendanceStatus(str, Enum):
+    PRESENT = "present"
+    ABSENT = "absent"
+    LATE = "late"
+    HALF_DAY = "half_day"
+    WORK_FROM_HOME = "work_from_home"
+    ON_LEAVE = "on_leave"
+    HOLIDAY = "holiday"
+    WEEKEND = "weekend"
+
+
+class ShiftType(str, Enum):
+    MORNING = "morning"
+    AFTERNOON = "afternoon"
+    NIGHT = "night"
+    FLEXIBLE = "flexible"
+    ROTATING = "rotating"
+
+
+class AttendanceRecordCreate(BaseModel):
+    user_id: str
+    date: datetime
+    check_in_time: Optional[datetime] = None
+    check_out_time: Optional[datetime] = None
+    status: AttendanceStatus
+    shift_type: ShiftType
+    work_hours: float = Field(0, ge=0)
+    overtime_hours: float = Field(0, ge=0)
+    notes: Optional[str] = None
+    location: Optional[str] = None
+    device_id: Optional[str] = None
+
+
+class AttendanceRecordResponse(BaseModel):
+    id: str
+    user_id: str
+    user_name: str
+    date: datetime
+    check_in_time: Optional[datetime]
+    check_out_time: Optional[datetime]
+    status: AttendanceStatus
+    shift_type: ShiftType
+    work_hours: float
+    overtime_hours: float
+    notes: Optional[str]
+    location: Optional[str]
+    device_id: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class AttendanceSummary(BaseModel):
+    user_id: str
+    user_name: str
+    period_start: datetime
+    period_end: datetime
+    total_days: int
+    present_days: int
+    absent_days: int
+    late_days: int
+    half_days: int
+    work_from_home_days: int
+    leave_days: int
+    total_work_hours: float
+    total_overtime_hours: float
+    average_work_hours: float
+    attendance_percentage: float
+
+
+class TimingRecordCreate(BaseModel):
+    user_id: str
+    date: datetime
+    project_id: Optional[str] = None
+    task_id: Optional[str] = None
+    start_time: datetime
+    end_time: Optional[datetime] = None
+    duration: float = Field(0, ge=0)  # in hours
+    activity: str
+    description: Optional[str] = None
+    is_billable: bool = True
+
+
+class TimingRecordResponse(BaseModel):
+    id: str
+    user_id: str
+    user_name: str
+    date: datetime
+    project_id: Optional[str]
+    project_name: Optional[str]
+    task_id: Optional[str]
+    task_name: Optional[str]
+    start_time: datetime
+    end_time: Optional[datetime]
+    duration: float
+    activity: str
+    description: Optional[str]
+    is_billable: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+# ========== Leave Management Schemas ==========
+class LeaveType(str, Enum):
+    SICK_LEAVE = "sick_leave"
+    CASUAL_LEAVE = "casual_leave"
+    EARNED_LEAVE = "earned_leave"
+    MATERNITY_LEAVE = "maternity_leave"
+    PATERNITY_LEAVE = "paternity_leave"
+    COMPENSATORY_OFF = "compensatory_off"
+    UNPAID_LEAVE = "unpaid_leave"
+    EMERGENCY_LEAVE = "emergency_leave"
+    STUDY_LEAVE = "study_leave"
+    MARRIAGE_LEAVE = "marriage_leave"
+    BEREAVEMENT_LEAVE = "bereavement_leave"
+
+
+class LeaveStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    CANCELLED = "cancelled"
+    ON_HOLD = "on_hold"
+
+
+class LeaveBalance(BaseModel):
+    leave_type: LeaveType
+    total_allocated: int
+    used: int
+    balance: int
+    carry_forward: int = 0
+    expiry_date: Optional[datetime]
+
+
+class LeaveRequestCreate(BaseModel):
+    user_id: str
+    leave_type: LeaveType
+    start_date: datetime
+    end_date: datetime
+    total_days: int = Field(..., gt=0)
+    reason: str
+    attachment_url: Optional[str] = None
+    emergency_contact: Optional[str] = None
+    work_handover_to: Optional[str] = None
+
+
+class LeaveRequestResponse(BaseModel):
+    id: str
+    user_id: str
+    user_name: str
+    leave_type: LeaveType
+    start_date: datetime
+    end_date: datetime
+    total_days: int
+    reason: str
+    attachment_url: Optional[str]
+    emergency_contact: Optional[str]
+    work_handover_to: Optional[str]
+    handover_person_name: Optional[str]
+    status: LeaveStatus
+    approved_by: Optional[str]
+    approved_by_name: Optional[str]
+    approved_at: Optional[datetime]
+    rejection_reason: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class LeaveApproval(BaseModel):
+    leave_request_id: str
+    action: str  # approve, reject, on_hold
+    rejection_reason: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class LeaveCalendar(BaseModel):
+    date: datetime
+    user_id: str
+    user_name: str
+    leave_type: LeaveType
+    status: LeaveStatus
+    is_half_day: bool = False
+
+
+# ========== Recruitment Leave Schemas ==========
+class RecruitmentLeaveType(str, Enum):
+    INTERVIEW_LEAVE = "interview_leave"
+    TRAINING_LEAVE = "training_leave"
+    ONBOARDING_LEAVE = "onboarding_leave"
+    PROBATION_LEAVE = "probation_leave"
+    ASSESSMENT_LEAVE = "assessment_leave"
+
+
+class RecruitmentLeaveCreate(BaseModel):
+    candidate_id: str
+    candidate_name: str
+    leave_type: RecruitmentLeaveType
+    start_date: datetime
+    end_date: datetime
+    total_hours: float = Field(..., gt=0)
+    purpose: str
+    recruiter_id: str
+    interviewer_id: Optional[str] = None
+    location: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class RecruitmentLeaveResponse(BaseModel):
+    id: str
+    candidate_id: str
+    candidate_name: str
+    leave_type: RecruitmentLeaveType
+    start_date: datetime
+    end_date: datetime
+    total_hours: float
+    purpose: str
+    recruiter_id: str
+    recruiter_name: str
+    interviewer_id: Optional[str]
+    interviewer_name: Optional[str]
+    location: Optional[str]
+    notes: Optional[str]
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class RecruitmentLeaveSchedule(BaseModel):
+    date: datetime
+    candidate_id: str
+    candidate_name: str
+    leave_type: RecruitmentLeaveType
+    start_time: datetime
+    end_time: datetime
+    location: Optional[str]
+    recruiter_id: str
+    interviewer_id: Optional[str]
+
+
+# ========== Leave Application Portal Schemas ==========
+class LeaveApplication(BaseModel):
+    user_id: str
+    leave_type: LeaveType
+    start_date: datetime
+    end_date: datetime
+    total_days: int
+    reason: str
+    attachment_url: Optional[str]
+    emergency_contact: Optional[str]
+    work_handover_to: Optional[str]
+    submission_date: datetime
+    portal_status: str  # draft, submitted, under_review, approved, rejected
+
+
+class LeaveApplicationResponse(BaseModel):
+    id: str
+    application: LeaveApplication
+    leave_request_id: Optional[str]
+    current_balance: int
+    approval_workflow: List[Dict[str, Any]]
+    notifications_sent: List[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class LeavePolicy(BaseModel):
+    leave_type: LeaveType
+    days_per_year: int
+    accrual_rate: str  # monthly, quarterly, yearly
+    max_accumulation: int
+    carry_forward_allowed: bool
+    carry_forward_limit: int
+    requires_approval: bool
+    approval_levels: List[str]
+    documentation_required: bool
+    advance_notice_days: int
+    description: str
+
+
+class LeaveAnalytics(BaseModel):
+    user_id: str
+    user_name: str
+    period_start: datetime
+    period_end: datetime
+    total_leaves_taken: int
+    leaves_by_type: Dict[str, int]
+    leave_balance: Dict[str, int]
+    rejection_rate: float
+    average_leave_duration: float
+    peak_leave_months: List[str]
+    created_at: datetime
+
+
+# ========== Loan Application Schemas ==========
+class LoanApplicationStatus(str, Enum):
+    DRAFT = "draft"
+    SUBMITTED = "submitted"
+    UNDER_REVIEW = "under_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    DISBURSED = "disbursed"
+    CLOSED = "closed"
+
+
+class LoanType(str, Enum):
+    HOME_LOAN = "home_loan"
+    PERSONAL_LOAN = "personal_loan"
+    CAR_LOAN = "car_loan"
+    EDUCATION_LOAN = "education_loan"
+    BUSINESS_LOAN = "business_loan"
+    PROPERTY_LOAN = "property_loan"
+
+
+class LoanApplicationCreate(BaseModel):
+    user_id: str
+    loan_type: LoanType
+    property_id: Optional[str] = None
+    loan_amount: float = Field(..., gt=0)
+    loan_term_months: int = Field(..., gt=0)
+    interest_rate: float = Field(..., ge=0, le=100)
+    purpose: str
+    income: float = Field(..., gt=0)
+    employment_type: str
+    employer_name: Optional[str] = None
+    employment_duration_months: int = Field(0, ge=0)
+    existing_loans: float = Field(0, ge=0)
+    collateral_type: Optional[str] = None
+    collateral_value: Optional[float] = Field(None, ge=0)
+    documents: List[str] = []
+    co_applicant_id: Optional[str] = None
+
+
+class LoanApplicationResponse(BaseModel):
+    id: str
+    user_id: str
+    user_name: str
+    loan_type: LoanType
+    property_id: Optional[str]
+    property_title: Optional[str]
+    loan_amount: float
+    loan_term_months: int
+    interest_rate: float
+    emi: float
+    total_payable: float
+    purpose: str
+    income: float
+    employment_type: str
+    employer_name: Optional[str]
+    employment_duration_months: int
+    existing_loans: float
+    collateral_type: Optional[str]
+    collateral_value: Optional[float]
+    documents: List[str]
+    co_applicant_id: Optional[str]
+    co_applicant_name: Optional[str]
+    status: LoanApplicationStatus
+    credit_score: Optional[int]
+    approval_amount: Optional[float]
+    rejection_reason: Optional[str]
+    approved_by: Optional[str]
+    approved_by_name: Optional[str]
+    approved_at: Optional[datetime]
+    disbursed_at: Optional[datetime]
+    created_at: datetime
+    updated_at: datetime
+
+
+class LoanApproval(BaseModel):
+    loan_application_id: str
+    action: str  # approve, reject
+    approval_amount: Optional[float] = None
+    interest_rate: Optional[float] = None
+    rejection_reason: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class LoanDisbursement(BaseModel):
+    loan_application_id: str
+    disbursement_amount: float
+    disbursement_method: str  # bank_transfer, check
+    bank_account_number: str
+    ifsc_code: str
+    notes: Optional[str] = None
+
+
+class LoanEligibility(BaseModel):
+    user_id: str
+    eligible: bool
+    max_loan_amount: float
+    max_interest_rate: float
+    max_term_months: int
+    credit_score: Optional[int]
+    debt_to_income_ratio: float
+    factors: List[Dict[str, Any]]
+    created_at: datetime
+
+
+# ========== Interview Schemas ==========
+class InterviewStatus(str, Enum):
+    SCHEDULED = "scheduled"
+    INVITED = "invited"
+    CONFIRMED = "confirmed"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+    RESCHEDULED = "rescheduled"
+    NO_SHOW = "no_show"
+    SELECTED = "selected"
+    REJECTED = "rejected"
+
+
+class InterviewType(str, Enum):
+    SCREENING = "screening"
+    TECHNICAL = "technical"
+    BEHAVIORAL = "behavioral"
+    PANEL = "panel"
+    FINAL = "final"
+    HR_ROUND = "hr_round"
+    MANAGER_ROUND = "manager_round"
+
+
+class InterviewMode(str, Enum):
+    IN_PERSON = "in_person"
+    VIDEO_CALL = "video_call"
+    PHONE_CALL = "phone_call"
+    ONLINE_ASSESSMENT = "online_assessment"
+
+
+class InterviewRound(str, Enum):
+    ROUND_1 = "round_1"
+    ROUND_2 = "round_2"
+    ROUND_3 = "round_3"
+    FINAL_ROUND = "final_round"
+
+
+class InterviewScheduleCreate(BaseModel):
+    job_application_id: str
+    job_posting_id: str
+    candidate_id: str
+    candidate_name: str
+    candidate_email: str
+    candidate_phone: str
+    interviewer_id: str
+    interviewer_name: str
+    interviewer_email: str
+    interview_type: InterviewType
+    interview_mode: InterviewMode
+    interview_round: InterviewRound
+    scheduled_date: datetime
+    scheduled_time: str  # HH:MM format
+    duration_minutes: int = Field(..., gt=0, le=180)
+    location: Optional[str] = None
+    meeting_link: Optional[str] = None
+    meeting_id: Optional[str] = None
+    meeting_password: Optional[str] = None
+    notes: Optional[str] = None
+    skills_to_assess: List[str] = []
+    interview_questions: List[str] = []
+
+
+class InterviewScheduleResponse(BaseModel):
+    id: str
+    job_application_id: str
+    job_posting_id: str
+    job_title: str
+    candidate_id: str
+    candidate_name: str
+    candidate_email: str
+    candidate_phone: str
+    interviewer_id: str
+    interviewer_name: str
+    interviewer_email: str
+    interview_type: InterviewType
+    interview_mode: InterviewMode
+    interview_round: InterviewRound
+    scheduled_date: datetime
+    scheduled_time: str
+    duration_minutes: int
+    location: Optional[str]
+    meeting_link: Optional[str]
+    meeting_id: Optional[str]
+    meeting_password: Optional[str]
+    notes: Optional[str]
+    skills_to_assess: List[str]
+    interview_questions: List[str]
+    status: InterviewStatus
+    invitation_sent: bool
+    invitation_sent_at: Optional[datetime]
+    reminder_sent: bool
+    reminder_sent_at: Optional[datetime]
+    feedback: Optional[str]
+    rating: Optional[int] = Field(None, ge=1, le=5)
+    selected: bool = False
+    created_at: datetime
+    updated_at: datetime
+
+
+class InterviewInvitationCreate(BaseModel):
+    interview_id: str
+    candidate_id: str
+    candidate_name: str
+    candidate_email: str
+    candidate_phone: str
+    interviewer_name: str
+    interviewer_email: str
+    job_title: str
+    company_name: str
+    interview_date: datetime
+    interview_time: str
+    interview_mode: InterviewMode
+    location: Optional[str] = None
+    meeting_link: Optional[str] = None
+    meeting_id: Optional[str] = None
+    meeting_password: Optional[str] = None
+    duration_minutes: int
+    notes: Optional[str] = None
+
+
+class InterviewInvitationResponse(BaseModel):
+    id: str
+    interview_id: str
+    candidate_id: str
+    candidate_name: str
+    candidate_email: str
+    candidate_phone: str
+    interviewer_name: str
+    interviewer_email: str
+    job_title: str
+    company_name: str
+    interview_date: datetime
+    interview_time: str
+    interview_mode: InterviewMode
+    location: Optional[str]
+    meeting_link: Optional[str]
+    meeting_id: Optional[str]
+    meeting_password: Optional[str]
+    duration_minutes: int
+    notes: Optional[str]
+    status: str  # sent, delivered, opened, accepted, declined
+    sent_at: datetime
+    delivered_at: Optional[datetime]
+    opened_at: Optional[datetime]
+    responded_at: Optional[datetime]
+
+
+class InterviewFeedbackCreate(BaseModel):
+    interview_id: str
+    interviewer_id: str
+    interviewer_name: str
+    candidate_id: str
+    candidate_name: str
+    rating: int = Field(..., ge=1, le=5)
+    technical_score: Optional[int] = Field(None, ge=0, le=100)
+    communication_score: Optional[int] = Field(None, ge=0, le=100)
+    problem_solving_score: Optional[int] = Field(None, ge=0, le=100)
+    cultural_fit_score: Optional[int] = Field(None, ge=0, le=100)
+    strengths: List[str] = []
+    weaknesses: List[str] = []
+    comments: str
+    recommendation: str  # hire, reject, on_hold, next_round
+    next_round_recommended: bool = False
+    salary_expectation: Optional[float] = None
+    availability: Optional[str] = None
+
+
+class InterviewFeedbackResponse(BaseModel):
+    id: str
+    interview_id: str
+    interviewer_id: str
+    interviewer_name: str
+    candidate_id: str
+    candidate_name: str
+    rating: int
+    technical_score: Optional[int]
+    communication_score: Optional[int]
+    problem_solving_score: Optional[int]
+    cultural_fit_score: Optional[int]
+    strengths: List[str]
+    weaknesses: List[str]
+    comments: str
+    recommendation: str
+    next_round_recommended: bool
+    salary_expectation: Optional[float]
+    availability: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class InterviewProcessStep(BaseModel):
+    step_id: str
+    step_name: str
+    step_type: str  # screening, technical, behavioral, final
+    order: int
+    duration_minutes: int
+    required: bool = True
+    auto_advance: bool = False
+    pass_threshold: Optional[int] = None
+
+
+class InterviewWorkflowCreate(BaseModel):
+    job_posting_id: str
+    workflow_name: str
+    steps: List[InterviewProcessStep]
+    is_active: bool = True
+
+
+class InterviewWorkflowResponse(BaseModel):
+    id: str
+    job_posting_id: str
+    workflow_name: str
+    steps: List[InterviewProcessStep]
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class InterviewTimingLogic(BaseModel):
+    interview_id: str
+    buffer_time_minutes: int = 15
+    max_interviews_per_day: int = 6
+    working_hours_start: str = "09:00"
+    working_hours_end: str = "18:00"
+    break_hours: List[Dict[str, str]] = []  # [{"start": "12:00", "end": "13:00"}]
+    timezone: str = "Asia/Kolkata"
+    weekend_days: List[int] = [6, 7]  # Saturday, Sunday
+
+
+# ========== Investment Notification Schemas ==========
+class NotificationChannel(str, Enum):
+    EMAIL = "email"
+    WHATSAPP = "whatsapp"
+    SMS = "sms"
+    PUSH = "push"
+
+
+class NotificationStatus(str, Enum):
+    PENDING = "pending"
+    SENT = "sent"
+    FAILED = "failed"
+    DELIVERED = "delivered"
+    READ = "read"
+
+
+class InvestmentNotificationCreate(BaseModel):
+    user_id: str
+    investment_id: str
+    investment_type: str
+    amount: float
+    property_name: str
+    property_image: Optional[str] = None
+    property_size: Optional[float] = None
+    property_location: Optional[str] = None
+    investor_name: str
+    investor_email: str
+    investor_phone: str
+    channels: List[NotificationChannel] = [NotificationChannel.EMAIL, NotificationChannel.WHATSAPP]
+    additional_details: Optional[Dict[str, Any]] = None
+
+
+class InvestmentNotificationResponse(BaseModel):
+    id: str
+    user_id: str
+    investment_id: str
+    investment_type: str
+    amount: float
+    property_name: str
+    property_image: Optional[str]
+    property_size: Optional[float]
+    property_location: Optional[str]
+    investor_name: str
+    investor_email: str
+    investor_phone: str
+    channels: List[NotificationChannel]
+    email_status: NotificationStatus
+    whatsapp_status: NotificationStatus
+    sms_status: Optional[NotificationStatus] = None
+    push_status: Optional[NotificationStatus] = None
+    email_sent_at: Optional[datetime]
+    whatsapp_sent_at: Optional[datetime]
+    sms_sent_at: Optional[datetime]
+    push_sent_at: Optional[datetime]
+    error_message: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class EmailTemplate(BaseModel):
+    template_name: str
+    subject: str
+    body: str
+    variables: Dict[str, Any]
+
+
+class WhatsAppMessage(BaseModel):
+    phone_number: str
+    message: str
+    media_url: Optional[str] = None
+    template_name: Optional[str] = None
+
+
+class WhatsAppMessageResponse(BaseModel):
+    message_id: str
+    phone_number: str
+    status: str
+    sent_at: datetime
+    error_message: Optional[str]
+
+
+# ========== RBI Compliance and Fraud Detection Schemas ==========
+class FraudRiskLevel(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class TransactionStatus(str, Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    BLOCKED = "blocked"
+    FLAGGED = "flagged"
+    UNDER_REVIEW = "under_review"
+
+
+class KYCStatus(str, Enum):
+    NOT_STARTED = "not_started"
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    VERIFIED = "verified"
+    REJECTED = "rejected"
+    EXPIRED = "expired"
+
+
+class FraudDetectionRule(BaseModel):
+    rule_id: str
+    rule_name: str
+    rule_type: str  # amount_threshold, velocity_check, geo_anomaly, device_anomaly
+    threshold_value: Optional[float] = None
+    time_window_minutes: Optional[int] = None
+    is_active: bool = True
+    severity: FraudRiskLevel
+
+
+class FraudAlertCreate(BaseModel):
+    transaction_id: str
+    user_id: str
+    risk_level: FraudRiskLevel
+    rule_triggered: str
+    risk_factors: List[str]
+    transaction_amount: float
+    transaction_currency: str
+    ip_address: Optional[str] = None
+    device_id: Optional[str] = None
+    location: Optional[str] = None
+    additional_details: Optional[Dict[str, Any]] = None
+
+
+class FraudAlertResponse(BaseModel):
+    id: str
+    transaction_id: str
+    user_id: str
+    user_name: str
+    risk_level: FraudRiskLevel
+    rule_triggered: str
+    risk_factors: List[str]
+    transaction_amount: float
+    transaction_currency: str
+    ip_address: Optional[str]
+    device_id: Optional[str]
+    location: Optional[str]
+    status: str  # open, investigating, resolved, false_positive
+    action_taken: Optional[str] = None
+    resolved_by: Optional[str] = None
+    resolved_at: Optional[datetime]
+    additional_details: Optional[Dict[str, Any]]
+    created_at: datetime
+    updated_at: datetime
+
+
+class TransactionMonitoringLog(BaseModel):
+    transaction_id: str
+    user_id: str
+    transaction_amount: float
+    transaction_type: str
+    payment_method: str
+    merchant_id: Optional[str] = None
+    ip_address: Optional[str] = None
+    device_fingerprint: Optional[str] = None
+    geolocation: Optional[Dict[str, Any]] = None
+    risk_score: float = 0.0
+    risk_level: FraudRiskLevel = FraudRiskLevel.LOW
+    status: TransactionStatus
+    blocked: bool = False
+    block_reason: Optional[str] = None
+    additional_checks_performed: List[str] = []
+    created_at: datetime
+
+
+class KYCDocumentType(str, Enum):
+    PAN_CARD = "pan_card"
+    AADHAAR_CARD = "aadhaar_card"
+    PASSPORT = "passport"
+    DRIVING_LICENSE = "driving_license"
+    VOTER_ID = "voter_id"
+    BANK_STATEMENT = "bank_statement"
+
+
+class KYCVerificationCreate(BaseModel):
+    user_id: str
+    document_type: KYCDocumentType
+    document_number: str
+    document_image_url: str
+    selfie_image_url: Optional[str] = None
+    date_of_birth: Optional[datetime] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+
+
+class KYCVerificationResponse(BaseModel):
+    id: str
+    user_id: str
+    user_name: str
+    document_type: KYCDocumentType
+    document_number: str
+    document_image_url: str
+    selfie_image_url: Optional[str]
+    status: KYCStatus
+    verification_score: Optional[float] = None
+    verified_by: Optional[str] = None
+    verified_at: Optional[datetime]
+    rejection_reason: Optional[str] = None
+    expiry_date: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class TransactionLimitCheck(BaseModel):
+    user_id: str
+    transaction_amount: float
+    transaction_type: str
+    daily_total: float
+    monthly_total: float
+    within_limits: bool
+    limit_type: Optional[str] = None  # transaction, daily, monthly
+    remaining_limit: Optional[float] = None
+    kyc_required: bool
+    pan_required: bool
+    two_factor_required: bool
+
+
+class SecurePaymentRequest(BaseModel):
+    user_id: str
+    amount: float
+    currency: str = "INR"
+    payment_method: str
+    merchant_id: Optional[str] = None
+    description: str
+    ip_address: Optional[str] = None
+    device_fingerprint: Optional[str] = None
+    geolocation: Optional[Dict[str, Any]] = None
+    pan_number: Optional[str] = None
+    aadhaar_number: Optional[str] = None
+    two_factor_otp: Optional[str] = None
+
+
+class SecurePaymentResponse(BaseModel):
+    transaction_id: str
+    status: TransactionStatus
+    amount: float
+    currency: str
+    risk_score: float
+    risk_level: FraudRiskLevel
+    kyc_verified: bool
+    pan_verified: bool
+    two_factor_verified: bool
+    requires_additional_verification: bool
+    verification_required: List[str]
+    blocked: bool
+    block_reason: Optional[str]
+    created_at: datetime
 

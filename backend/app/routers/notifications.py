@@ -6,10 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.config import settings
 from app.whatsapp import WhatsAppIntegration, WhatsAppNotificationService
 from app.email import SMTPEmailService, EmailNotificationService
+from app.notification import notification_manager
 from app.schemas import (
     WhatsAppMessageRequest, WhatsAppMessageResponse, WhatsAppTemplateRequest,
     EmailMessageRequest, EmailMessageResponse,
-    NotificationRequest, NotificationResponse, NotificationPreferences
+    NotificationRequest, NotificationResponse, NotificationPreferences,
+    InvestmentNotificationCreate, InvestmentNotificationResponse
 )
 from app.database import get_database
 from datetime import datetime
@@ -417,6 +419,68 @@ async def get_notification_history(
         del notification["_id"]
     
     total = await db.notifications.count_documents(query_filter)
+    
+    return {
+        "items": notifications,
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
+
+
+# ========== Investment Notification Endpoints ==========
+
+@router.post("/investment/greeting", response_model=InvestmentNotificationResponse)
+async def send_investment_greeting(
+    notification: InvestmentNotificationCreate,
+    db = Depends(get_database)
+):
+    """Send investment greeting notification via email and WhatsApp"""
+    try:
+        result = await notification_manager.send_investment_notification(notification, db)
+        return InvestmentNotificationResponse(**result)
+    except Exception as e:
+        logger.error(f"Investment notification error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/investment/{notification_id}", response_model=InvestmentNotificationResponse)
+async def get_investment_notification(
+    notification_id: str,
+    db = Depends(get_database)
+):
+    """Get investment notification details"""
+    notification = await db.investment_notifications.find_one({"_id": notification_id})
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    
+    notification["id"] = str(notification["_id"])
+    del notification["_id"]
+    
+    return InvestmentNotificationResponse(**notification)
+
+
+@router.get("/investment/user/{user_id}")
+async def get_user_investment_notifications(
+    user_id: str,
+    status: str = None,
+    skip: int = 0,
+    limit: int = 50,
+    db = Depends(get_database)
+):
+    """Get investment notifications for a user"""
+    query = {"user_id": user_id}
+    if status:
+        query["email_status"] = status
+    
+    cursor = db.investment_notifications.find(query).sort("created_at", -1).skip(skip).limit(limit)
+    notifications = await cursor.to_list(length=limit)
+    
+    for notification in notifications:
+        notification["id"] = str(notification["_id"])
+        del notification["_id"]
+    
+    total = await db.investment_notifications.count_documents(query)
     
     return {
         "items": notifications,

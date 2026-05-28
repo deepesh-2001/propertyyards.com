@@ -12,8 +12,10 @@ from app.schemas import (
     EmployeeReferralCreate, EmployeeReferralUpdate, EmployeeReferralResponse
 )
 from app.auth import decode_token
+from app.cache import get_cache
 from datetime import datetime
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +45,7 @@ async def create_job_posting(
     authorization: str = None,
     db = Depends(get_database)
 ):
-    """Create a new job posting"""
+    """Create a new job posting with cache invalidation"""
     current_user = get_current_user(authorization)
     
     if current_user["role"] not in ["admin", "hr"]:
@@ -67,6 +69,11 @@ async def create_job_posting(
     )
     
     job = await recruitment.get_job_posting(job_id)
+    
+    # Invalidate cache for job listings
+    cache = get_cache()
+    await cache.delete("jobs_list:*")
+    
     return JobPostingResponse(**job)
 
 
@@ -76,8 +83,19 @@ async def get_job_posting(
     authorization: str = None,
     db = Depends(get_database)
 ):
-    """Get job posting by ID"""
+    """Get job posting by ID with caching"""
     current_user = get_current_user(authorization)
+    
+    cache = get_cache()
+    cache_key = f"job_posting:{job_id}"
+    
+    # Try to get from cache
+    cached_job = await cache.get(cache_key)
+    if cached_job:
+        job = json.loads(cached_job)
+        # Increment view count asynchronously
+        await Recruitment(db).update_job_posting(job_id, {"view_count": job.get("view_count", 0) + 1})
+        return JobPostingResponse(**job)
     
     recruitment = Recruitment(db)
     job = await recruitment.get_job_posting(job_id)
@@ -87,6 +105,9 @@ async def get_job_posting(
     
     # Increment view count
     await recruitment.update_job_posting(job_id, {"view_count": job.get("view_count", 0) + 1})
+    
+    # Cache for 1 hour
+    await cache.set(cache_key, json.dumps(job), ex=3600)
     
     return JobPostingResponse(**job)
 
@@ -101,8 +122,16 @@ async def list_job_postings(
     authorization: str = None,
     db = Depends(get_database)
 ):
-    """List job postings with filters"""
+    """List job postings with filters and caching"""
     current_user = get_current_user(authorization)
+    
+    cache = get_cache()
+    cache_key = f"jobs_list:{status}:{department}:{employment_type}:{page}:{limit}"
+    
+    # Try to get from cache
+    cached_jobs = await cache.get(cache_key)
+    if cached_jobs:
+        return json.loads(cached_jobs)
     
     recruitment = Recruitment(db)
     result = await recruitment.list_job_postings(
@@ -112,6 +141,9 @@ async def list_job_postings(
         skip=(page - 1) * limit,
         limit=limit
     )
+    
+    # Cache for 15 minutes
+    await cache.set(cache_key, json.dumps(result), ex=900)
     
     return result
 

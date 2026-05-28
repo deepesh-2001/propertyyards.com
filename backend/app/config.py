@@ -123,6 +123,56 @@ class Settings(BaseSettings):
     REFUND_WINDOW_DAYS: int = 30
     AUTO_CAPTURE_PAYMENT: bool = True
 
+    # Auto-scaling Configuration
+    ENABLE_AUTO_SCALING: bool = True
+    MIN_WORKERS: int = 4
+    MAX_WORKERS: int = 50
+    SCALE_UP_THRESHOLD: float = 0.6
+    SCALE_DOWN_THRESHOLD: float = 0.2
+    SCALE_UP_COOLDOWN: int = 60
+    SCALE_DOWN_COOLDOWN: int = 300
+    TARGET_CPU_PERCENTAGE: float = 70.0
+    TARGET_MEMORY_PERCENTAGE: float = 80.0
+    REQUEST_QUEUE_THRESHOLD: int = 500
+
+    # Performance Optimization for High Throughput (10,000 QPM)
+    ENABLE_QUERY_OPTIMIZATION: bool = True
+    ENABLE_INDEX_OPTIMIZATION: bool = True
+    ENABLE_CONNECTION_POOLING: bool = True
+    MAX_DB_CONNECTIONS: int = 500
+    MIN_DB_CONNECTIONS: int = 50
+    CONNECTION_POOL_TIMEOUT: int = 30
+    CONNECTION_POOL_MAX_OVERFLOW: int = 100
+    CONNECTION_POOL_RECYCLE: int = 3600
+    CONNECTION_POOL_PRE_PING: bool = True
+
+    # Rate Limiting for High Throughput
+    ENABLE_RATE_LIMITING: bool = True
+    RATE_LIMIT_REQUESTS: int = 1000
+    RATE_LIMIT_PERIOD: int = 60
+    RATE_LIMIT_BURST: int = 100
+    RATE_LIMIT_PER_USER: int = 100
+    RATE_LIMIT_PER_USER_PERIOD: int = 60
+
+    # RBI Compliance Configuration
+    RBI_COMPLIANCE_ENABLED: bool = True
+    MAX_TRANSACTION_AMOUNT: float = 200000.0  # INR 2 lakhs per transaction
+    MAX_DAILY_TRANSACTION_AMOUNT: float = 1000000.0  # INR 10 lakhs per day
+    MAX_MONTHLY_TRANSACTION_AMOUNT: float = 5000000.0  # INR 50 lakhs per month
+    TRANSACTION_MONITORING_ENABLED: bool = True
+    FRAUD_DETECTION_ENABLED: bool = True
+    TWO_FACTOR_AUTHENTICATION_REQUIRED: bool = True
+    TRANSACTION_LIMIT_FOR_KYC: float = 50000.0  # KYC required above INR 50k
+    PAN_REQUIRED_ABOVE_AMOUNT: float = 50000.0  # PAN required above INR 50k
+    AADHAAR_VERIFICATION_ENABLED: bool = True
+    TRANSACTION_LOG_RETENTION_DAYS: int = 365
+    ALERT_SUSPICIOUS_TRANSACTIONS: bool = True
+    AUTO_BLOCK_SUSPICIOUS_ACCOUNTS: bool = True
+    MERCHANT_CATEGORY_CODE_RESTRICTIONS: bool = True
+    GEOLOCATION_VERIFICATION: bool = True
+    DEVICE_FINGERPRINTING: bool = True
+    IP_WHITELIST_ENABLED: bool = False
+
     class Config:
         env_file = ".env"
         case_sensitive = True

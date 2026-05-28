@@ -119,6 +119,58 @@ async def calculate_commission(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/builder-property")
+async def calculate_builder_property_commission(
+    property_id: str,
+    property_value: float,
+    recipient_id: str,
+    recipient_type: str,
+    commission_rule_id: str,
+    database=Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Calculate commission for builder property sale"""
+    try:
+        commission = await commission_processor.calculate_deal_commission(
+            deal_id=property_id,
+            deal_type="builder_property",
+            deal_amount=property_value,
+            recipient_id=recipient_id,
+            recipient_type=recipient_type,
+            commission_rule_id=commission_rule_id,
+            database=database
+        )
+        return commission
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/loan")
+async def calculate_loan_commission(
+    loan_id: str,
+    loan_amount: float,
+    recipient_id: str,
+    recipient_type: str,
+    commission_rule_id: str,
+    database=Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Calculate commission for loan processing"""
+    try:
+        commission = await commission_processor.calculate_deal_commission(
+            deal_id=loan_id,
+            deal_type="loan",
+            deal_amount=loan_amount,
+            recipient_id=recipient_id,
+            recipient_type=recipient_type,
+            commission_rule_id=commission_rule_id,
+            database=database
+        )
+        return commission
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/commissions/{commission_id}", response_model=CommissionResponse)
 async def get_commission(
     commission_id: str,
@@ -271,5 +323,117 @@ async def get_commission_analytics(
             database=database
         )
         return CommissionAnalytics(**analytics)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/returns/monthly")
+async def get_monthly_returns(
+    recipient_id: Optional[str] = None,
+    year: Optional[int] = None,
+    database=Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get monthly commission returns"""
+    try:
+        query = {}
+        if recipient_id:
+            query["recipient_id"] = recipient_id
+        if year:
+            query["created_at"] = {"$gte": datetime(year, 1, 1), "$lte": datetime(year, 12, 31)}
+        
+        commissions = await database.commissions.find(query).to_list(length=1000)
+        monthly_returns = await commission_processor._calculate_monthly_returns(commissions, database)
+        
+        return {"monthly_returns": monthly_returns}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/returns/quarterly")
+async def get_quarterly_returns(
+    recipient_id: Optional[str] = None,
+    year: Optional[int] = None,
+    database=Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get quarterly commission returns"""
+    try:
+        query = {}
+        if recipient_id:
+            query["recipient_id"] = recipient_id
+        if year:
+            query["created_at"] = {"$gte": datetime(year, 1, 1), "$lte": datetime(year, 12, 31)}
+        
+        commissions = await database.commissions.find(query).to_list(length=1000)
+        quarterly_returns = await commission_processor._calculate_quarterly_returns(commissions, database)
+        
+        return {"quarterly_returns": quarterly_returns}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/returns/yearly")
+async def get_yearly_returns(
+    recipient_id: Optional[str] = None,
+    database=Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get yearly commission returns"""
+    try:
+        query = {}
+        if recipient_id:
+            query["recipient_id"] = recipient_id
+        
+        commissions = await database.commissions.find(query).to_list(length=1000)
+        yearly_returns = await commission_processor._calculate_yearly_returns(commissions, database)
+        
+        return {"yearly_returns": yearly_returns}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/returns/total")
+async def get_total_returns(
+    recipient_id: str,
+    database=Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get total commission returns for a recipient"""
+    try:
+        query = {"recipient_id": recipient_id}
+        commissions = await database.commissions.find(query).to_list(length=1000)
+        
+        total_returns = sum(c["calculated_amount"] for c in commissions if c["status"] == CommissionStatus.PAID)
+        pending_returns = sum(c["calculated_amount"] for c in commissions if c["status"] == CommissionStatus.PENDING)
+        
+        # Get first and last commission dates
+        if commissions:
+            first_date = min(c["created_at"] for c in commissions)
+            last_date = max(c["created_at"] for c in commissions)
+        else:
+            first_date = datetime.utcnow()
+            last_date = datetime.utcnow()
+        
+        # Calculate average monthly returns
+        months = max(1, (last_date - first_date).days / 30)
+        average_monthly = total_returns / months
+        
+        # Calculate CAGR
+        years = max(1, months / 12)
+        if total_returns > 0 and years > 1:
+            cagr = ((total_returns / 1000) ** (1 / years) - 1) * 100
+        else:
+            cagr = 0
+        
+        return {
+            "total_returns": total_returns,
+            "pending_returns": pending_returns,
+            "average_monthly_returns": average_monthly,
+            "cagr": cagr,
+            "first_commission_date": first_date,
+            "last_commission_date": last_date,
+            "total_commissions": len(commissions)
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

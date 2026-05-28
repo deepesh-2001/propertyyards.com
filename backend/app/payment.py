@@ -879,5 +879,227 @@ class PaymentProcessor:
             raise PaymentGatewayError(f"Failed to get payment status: {str(e)}")
 
 
+class CreditCardPaymentGateway:
+    """Credit card payment integration using existing gateways"""
+    
+    def __init__(self):
+        self.stripe_gateway = StripePaymentGateway()
+        self.razorpay_gateway = RazorpayPaymentGateway()
+        self.payu_gateway = PayUPaymentGateway()
+    
+    async def process_credit_card_payment(
+        self,
+        card_data: Dict[str, Any],
+        amount: float,
+        currency: str = "USD",
+        gateway: PaymentGateway = PaymentGateway.STRIPE,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Process credit card payment through specified gateway"""
+        try:
+            if gateway == PaymentGateway.STRIPE:
+                return await self._process_stripe_card(card_data, amount, currency, metadata)
+            elif gateway == PaymentGateway.RAZORPAY:
+                return await self._process_razorpay_card(card_data, amount, currency, metadata)
+            elif gateway == PaymentGateway.PAYU:
+                return await self._process_payu_card(card_data, amount, currency, metadata)
+            else:
+                raise PaymentGatewayError(f"Credit card payment not supported for gateway {gateway}")
+        except Exception as e:
+            logger.error(f"Credit card payment error: {e}")
+            raise PaymentGatewayError(f"Credit card payment failed: {str(e)}")
+    
+    async def _process_stripe_card(
+        self,
+        card_data: Dict[str, Any],
+        amount: float,
+        currency: str,
+        metadata: Optional[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Process credit card payment via Stripe"""
+        try:
+            stripe = await self.stripe_gateway._get_client()
+            
+            # Create payment method from card data
+            payment_method = stripe.PaymentMethod.create(
+                type="card",
+                card={
+                    "number": card_data["card_number"],
+                    "exp_month": card_data["expiry_month"],
+                    "exp_year": card_data["expiry_year"],
+                    "cvc": card_data["cvv"]
+                },
+                billing_details={
+                    "name": card_data.get("cardholder_name", ""),
+                    "email": card_data.get("email", ""),
+                    "phone": card_data.get("phone", "")
+                }
+            )
+            
+            # Create payment intent
+            intent = stripe.PaymentIntent.create(
+                amount=int(amount * 100),
+                currency=currency.lower(),
+                payment_method=payment_method.id,
+                confirm=True,
+                metadata=metadata or {},
+                automatic_payment_methods={"enabled": True}
+            )
+            
+            return {
+                "success": True,
+                "payment_intent_id": intent.id,
+                "payment_method_id": payment_method.id,
+                "status": intent.status,
+                "amount": intent.amount / 100,
+                "currency": intent.currency,
+                "gateway": PaymentGateway.STRIPE
+            }
+        except Exception as e:
+            logger.error(f"Stripe card payment error: {e}")
+            raise PaymentGatewayError(f"Stripe card payment failed: {str(e)}")
+    
+    async def _process_razorpay_card(
+        self,
+        card_data: Dict[str, Any],
+        amount: float,
+        currency: str,
+        metadata: Optional[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Process credit card payment via Razorpay"""
+        try:
+            import aiohttp
+            
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {settings.RAZORPAY_KEY_SECRET}"
+            }
+            
+            # Create order
+            order_data = {
+                "amount": int(amount * 100),
+                "currency": currency,
+                "receipt": f"receipt_{datetime.utcnow().timestamp()}",
+                "payment_capture": 1,
+                "notes": metadata or {}
+            }
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{self.razorpay_gateway.base_url}/orders",
+                    headers=headers,
+                    json=order_data
+                ) as response:
+                    if response.status != 200:
+                        raise PaymentGatewayError("Failed to create Razorpay order")
+                    order = await response.json()
+            
+            return {
+                "success": True,
+                "order_id": order["id"],
+                "amount": order["amount"] / 100,
+                "currency": order["currency"],
+                "gateway": PaymentGateway.RAZORPAY
+            }
+        except Exception as e:
+            logger.error(f"Razorpay card payment error: {e}")
+            raise PaymentGatewayError(f"Razorpay card payment failed: {str(e)}")
+    
+    async def _process_payu_card(
+        self,
+        card_data: Dict[str, Any],
+        amount: float,
+        currency: str,
+        metadata: Optional[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Process credit card payment via PayU"""
+        try:
+            import aiohttp
+            import hashlib
+            
+            # Generate hash
+            hash_string = f"{settings.PAYU_MERCHANT_KEY}|{amount}|{card_data.get('product_info', 'payment')}|{card_data.get('firstname', 'user')}|{card_data.get('email', '')}||||||||||{settings.PAYU_MERCHANT_SALT}"
+            hash_value = hashlib.sha512(hash_string.encode()).hexdigest()
+            
+            payment_data = {
+                "key": settings.PAYU_MERCHANT_KEY,
+                "txnid": f"txn_{datetime.utcnow().timestamp()}",
+                "amount": amount,
+                "productinfo": card_data.get("product_info", "payment"),
+                "firstname": card_data.get("firstname", "user"),
+                "email": card_data.get("email", ""),
+                "surl": card_data.get("success_url", ""),
+                "furl": card_data.get("failure_url", ""),
+                "hash": hash_value,
+                "card_number": card_data["card_number"],
+                "expiry_month": card_data["expiry_month"],
+                "expiry_year": card_data["expiry_year"],
+                "cvv": card_data["cvv"],
+                "pg": "CC"  # Credit Card
+            }
+            
+            return {
+                "success": True,
+                "txnid": payment_data["txnid"],
+                "amount": amount,
+                "currency": currency,
+                "gateway": PaymentGateway.PAYU,
+                "payment_data": payment_data
+            }
+        except Exception as e:
+            logger.error(f"PayU card payment error: {e}")
+            raise PaymentGatewayError(f"PayU card payment failed: {str(e)}")
+    
+    async def validate_credit_card(self, card_number: str) -> Dict[str, Any]:
+        """Validate credit card using Luhn algorithm"""
+        try:
+            # Remove non-digit characters
+            card_number = ''.join(c for c in card_number if c.isdigit())
+            
+            # Check length
+            if len(card_number) < 13 or len(card_number) > 19:
+                return {"valid": False, "error": "Invalid card length"}
+            
+            # Luhn algorithm
+            total = 0
+            reverse_digits = card_number[::-1]
+            
+            for i, digit in enumerate(reverse_digits):
+                d = int(digit)
+                if i % 2 == 1:
+                    d *= 2
+                    if d > 9:
+                        d -= 9
+                total += d
+            
+            is_valid = total % 10 == 0
+            
+            # Identify card type
+            card_type = self._identify_card_type(card_number)
+            
+            return {
+                "valid": is_valid,
+                "card_type": card_type,
+                "last_four": card_number[-4:]
+            }
+        except Exception as e:
+            logger.error(f"Card validation error: {e}")
+            return {"valid": False, "error": str(e)}
+    
+    def _identify_card_type(self, card_number: str) -> str:
+        """Identify credit card type from number"""
+        if card_number.startswith('4'):
+            return 'visa'
+        elif card_number.startswith('5') or card_number.startswith('2'):
+            return 'mastercard'
+        elif card_number.startswith('3'):
+            return 'amex'
+        elif card_number.startswith('6'):
+            return 'discover'
+        else:
+            return 'unknown'
+
+
 # Global payment processor instance
 payment_processor = PaymentProcessor()
+credit_card_gateway = CreditCardPaymentGateway()

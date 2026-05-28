@@ -8,8 +8,11 @@ import logging
 
 from app.schemas import (
     CommissionType,
-    CommissionStatus
+    CommissionStatus,
+    NotificationChannel,
+    InvestmentNotificationCreate
 )
+from app.notification import notification_manager
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +27,9 @@ class CommissionCalculator:
             CommissionType.REFERRAL: 0.5,  # 0.5% of deal amount
             CommissionType.BROKERAGE: 1.5,  # 1.5% of deal amount
             CommissionType.PERFORMANCE: 0.0,  # Calculated based on targets
-            CommissionType.TARGET_BONUS: 0.0  # Calculated based on targets
+            CommissionType.TARGET_BONUS: 0.0,  # Calculated based on targets
+            CommissionType.BUILDER_PROPERTY: 3.0,  # 3% of property value for builder properties
+            CommissionType.LOAN_COMMISSION: 0.5  # 0.5% of loan amount
         }
     
     def calculate_commission(
@@ -280,11 +285,67 @@ class CommissionProcessor:
                 }
             )
             
+            # Send investment notification for each commission
+            for commission in commissions:
+                await self._send_investment_notification(commission, database)
+            
             return payout
             
         except Exception as e:
             logger.error(f"Payout processing error: {e}")
             raise
+    
+    async def _send_investment_notification(
+        self,
+        commission: Dict[str, Any],
+        database
+    ):
+        """Send investment notification after commission payout"""
+        try:
+            # Get user details
+            user = await database.users.find_one({"_id": commission["recipient_id"]})
+            if not user:
+                logger.warning(f"User not found for commission {commission['_id']}")
+                return
+            
+            # Get property details if available
+            property_name = "Investment"
+            property_image = None
+            property_size = None
+            property_location = None
+            
+            if commission.get("property_id"):
+                property_data = await database.properties.find_one({"_id": commission["property_id"]})
+                if property_data:
+                    property_name = property_data.get("title", "Investment")
+                    property_image = property_data.get("images", [None])[0]
+                    property_size = property_data.get("area")
+                    property_location = property_data.get("location")
+            
+            # Create investment notification
+            notification = InvestmentNotificationCreate(
+                user_id=commission["recipient_id"],
+                investment_id=str(commission["_id"]),
+                investment_type=commission.get("commission_type", "investment"),
+                amount=commission["calculated_amount"],
+                property_name=property_name,
+                property_image=property_image,
+                property_size=property_size,
+                property_location=property_location,
+                investor_name=f"{user.get('first_name', '')} {user.get('last_name', '')}",
+                investor_email=user.get("email", ""),
+                investor_phone=user.get("phone_number", ""),
+                channels=[NotificationChannel.EMAIL, NotificationChannel.WHATSAPP]
+            )
+            
+            # Send notification
+            await notification_manager.send_investment_notification(notification, database)
+            
+            logger.info(f"Investment notification sent for commission {commission['_id']}")
+            
+        except Exception as e:
+            logger.error(f"Investment notification sending error: {e}")
+            # Don't raise error, allow payout to complete even if notification fails
     
     async def get_commission_analytics(
         self,
@@ -327,6 +388,15 @@ class CommissionProcessor:
             
             top_performers = sorted(performer_totals.items(), key=lambda x: x[1], reverse=True)[:10]
             
+            # Monthly returns
+            monthly_returns = await self._calculate_monthly_returns(commissions, database)
+            
+            # Quarterly returns
+            quarterly_returns = await self._calculate_quarterly_returns(commissions, database)
+            
+            # Yearly returns
+            yearly_returns = await self._calculate_yearly_returns(commissions, database)
+            
             return {
                 "total_commissions": total_commissions,
                 "paid_commissions": paid_commissions,
@@ -334,6 +404,9 @@ class CommissionProcessor:
                 "average_commission": average_commission,
                 "commission_by_type": commission_by_type,
                 "top_performers": [{"recipient_id": k, "total": v} for k, v in top_performers],
+                "monthly_returns": monthly_returns,
+                "quarterly_returns": quarterly_returns,
+                "yearly_returns": yearly_returns,
                 "period_start": start_date,
                 "period_end": end_date
             }
@@ -341,6 +414,104 @@ class CommissionProcessor:
         except Exception as e:
             logger.error(f"Commission analytics error: {e}")
             raise
+    
+    async def _calculate_monthly_returns(self, commissions: List[Dict], database) -> List[Dict[str, Any]]:
+        """Calculate monthly commission returns"""
+        monthly_data = {}
+        
+        for commission in commissions:
+            month_key = commission["created_at"].strftime("%Y-%m")
+            if month_key not in monthly_data:
+                monthly_data[month_key] = {"amount": 0, "count": 0}
+            monthly_data[month_key]["amount"] += commission["calculated_amount"]
+            monthly_data[month_key]["count"] += 1
+        
+        # Calculate growth rates
+        monthly_returns = []
+        sorted_months = sorted(monthly_data.keys())
+        
+        for i, month in enumerate(sorted_months):
+            current_amount = monthly_data[month]["amount"]
+            previous_amount = monthly_data[sorted_months[i-1]]["amount"] if i > 0 else 0
+            growth_rate = ((current_amount - previous_amount) / previous_amount * 100) if previous_amount > 0 else 0
+            
+            monthly_returns.append({
+                "month": month,
+                "commission_returns": current_amount,
+                "total_returns": current_amount,
+                "growth_rate": growth_rate,
+                "transaction_count": monthly_data[month]["count"]
+            })
+        
+        return monthly_returns
+    
+    async def _calculate_quarterly_returns(self, commissions: List[Dict], database) -> List[Dict[str, Any]]:
+        """Calculate quarterly commission returns"""
+        quarterly_data = {}
+        
+        for commission in commissions:
+            date = commission["created_at"]
+            year = date.year
+            quarter = (date.month - 1) // 3 + 1
+            quarter_key = f"{year}-Q{quarter}"
+            
+            if quarter_key not in quarterly_data:
+                quarterly_data[quarter_key] = {"amount": 0, "count": 0, "year": year, "quarter": quarter}
+            quarterly_data[quarter_key]["amount"] += commission["calculated_amount"]
+            quarterly_data[quarter_key]["count"] += 1
+        
+        # Calculate growth rates
+        quarterly_returns = []
+        sorted_quarters = sorted(quarterly_data.keys())
+        
+        for i, quarter in enumerate(sorted_quarters):
+            current_amount = quarterly_data[quarter]["amount"]
+            previous_amount = quarterly_data[sorted_quarters[i-1]]["amount"] if i > 0 else 0
+            growth_rate = ((current_amount - previous_amount) / previous_amount * 100) if previous_amount > 0 else 0
+            
+            quarterly_returns.append({
+                "quarter": quarter,
+                "year": quarterly_data[quarter]["year"],
+                "quarter_number": quarterly_data[quarter]["quarter"],
+                "commission_returns": current_amount,
+                "total_returns": current_amount,
+                "growth_rate": growth_rate,
+                "transaction_count": quarterly_data[quarter]["count"]
+            })
+        
+        return quarterly_returns
+    
+    async def _calculate_yearly_returns(self, commissions: List[Dict], database) -> List[Dict[str, Any]]:
+        """Calculate yearly commission returns"""
+        yearly_data = {}
+        
+        for commission in commissions:
+            year = commission["created_at"].year
+            if year not in yearly_data:
+                yearly_data[year] = {"amount": 0, "count": 0}
+            yearly_data[year]["amount"] += commission["calculated_amount"]
+            yearly_data[year]["count"] += 1
+        
+        # Calculate growth rates and averages
+        yearly_returns = []
+        sorted_years = sorted(yearly_data.keys())
+        
+        for i, year in enumerate(sorted_years):
+            current_amount = yearly_data[year]["amount"]
+            previous_amount = yearly_data[sorted_years[i-1]]["amount"] if i > 0 else 0
+            growth_rate = ((current_amount - previous_amount) / previous_amount * 100) if previous_amount > 0 else 0
+            average_monthly = current_amount / 12
+            
+            yearly_returns.append({
+                "year": year,
+                "commission_returns": current_amount,
+                "total_returns": current_amount,
+                "growth_rate": growth_rate,
+                "transaction_count": yearly_data[year]["count"],
+                "average_monthly_returns": average_monthly
+            })
+        
+        return yearly_returns
 
 
 # Global commission processor instance
