@@ -11,8 +11,9 @@ import sys
 from app.config import settings
 from app.database import init_database, close_database
 from app.cache import init_cache, close_cache
-from app.routers import auth, users, properties, inquiries, admin
+from app.routers import auth, users, properties, inquiries, admin, crm, referral, access, loan_calculator, contact, notifications, chatbot, brokers, reports, monitoring, recruitment, payments, self_healing, salary, commission, prediction, feedback
 from app import health, cron
+from app.access import AccessControl
 
 # Configure logging
 logging.basicConfig(
@@ -43,6 +44,15 @@ async def lifespan(app: FastAPI):
 
     # Initialize cache
     await init_cache()
+
+    # Initialize access control roles
+    try:
+        from app.database import database
+        access_control = AccessControl(database)
+        await access_control.initialize_default_roles()
+        logger.info("Access control roles initialized")
+    except Exception as e:
+        logger.error(f"Access control initialization error: {e}")
 
     # Start cron job scheduler
     cron.start_scheduler()
@@ -80,6 +90,23 @@ app.include_router(users.router)
 app.include_router(properties.router)
 app.include_router(inquiries.router)
 app.include_router(admin.router)
+app.include_router(crm.router)
+app.include_router(referral.router)
+app.include_router(access.router)
+app.include_router(loan_calculator.router)
+app.include_router(contact.router)
+app.include_router(notifications.router)
+app.include_router(chatbot.router)
+app.include_router(brokers.router)
+app.include_router(reports.router)
+app.include_router(monitoring.router)
+app.include_router(recruitment.router)
+app.include_router(self_healing.router)
+app.include_router(payments.router)
+app.include_router(salary.router)
+app.include_router(commission.router)
+app.include_router(prediction.router)
+app.include_router(feedback.router)
 app.include_router(health.router)
 
 
