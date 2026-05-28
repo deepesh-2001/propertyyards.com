@@ -130,8 +130,81 @@ async def monitor_system_metrics():
         logger.error(f"System metrics monitoring failed: {e}")
 
 
+async def sales_product_fetching():
+    """
+    Fetch sales products - LIMITED TO 4 TIMES PER DAY
+    Schedule: 2:00 AM, 8:00 AM, 2:00 PM, 8:00 PM
+    Only runs if system is idle (load < 30%)
+    """
+    try:
+        # Check system load
+        import psutil
+        cpu_percent = psutil.cpu_percent(interval=0.1)
+        memory_percent = psutil.virtual_memory().percent
+        current_load = (cpu_percent + memory_percent) / 2 / 100
+        
+        if current_load > 0.3:
+            logger.info(f"Sales fetch deferred - system busy (load: {current_load:.2f})")
+            return
+        
+        logger.info("Starting sales product fetching (4x/day limit enforced)")
+        
+        # Update fetch tracking
+        now = datetime.utcnow()
+        await set_in_cache("sales:last_fetch", now.isoformat(), ttl=21600)  # 6 hours
+        await set_in_cache("sales:fetch_count_today", 
+                          await _get_fetch_count_today() + 1, ttl=86400)
+        
+        # Trigger optimized background task
+        from app.optimized_background_tasks import optimized_scheduler
+        await optimized_scheduler.refresh_insurance_data_idle(database)
+        
+        logger.info("Sales product fetching completed during idle time")
+        
+    except Exception as e:
+        logger.error(f"Sales product fetching failed: {e}")
+
+
+async def _get_fetch_count_today() -> int:
+    """Get number of sales fetches today"""
+    try:
+        count = await get_from_cache("sales:fetch_count_today")
+        return int(count) if count else 0
+    except:
+        return 0
+
+
+async def generate_ai_content_idle():
+    """Generate beautiful AI content during idle time"""
+    try:
+        from app.optimized_background_tasks import optimized_scheduler
+        
+        # Check if system is idle enough for AI tasks
+        import psutil
+        cpu_percent = psutil.cpu_percent(interval=0.1)
+        if cpu_percent > 20:  # Only run if CPU < 20%
+            return
+        
+        # Generate beautiful property content
+        await optimized_scheduler.generate_beautiful_property_content(database)
+        
+        # Generate social media content
+        await optimized_scheduler.generate_social_media_content(database)
+        
+        # Generate AI images (only if very idle)
+        if cpu_percent < 10:
+            await optimized_scheduler.generate_ai_images_idle(database)
+        
+        logger.info("AI content generation completed during idle time")
+        
+    except Exception as e:
+        logger.error(f"AI content generation failed: {e}")
+
+
 def start_scheduler():
-    """Start the cron job scheduler"""
+    """Start the cron job scheduler with optimized idle-time processing"""
+    
+    # Light-weight tasks - can run anytime
     # Cache health check - every 1 minute
     scheduler.add_job(
         check_cache_health,
@@ -141,7 +214,27 @@ def start_scheduler():
         replace_existing=True
     )
     
-    # Cache data sync - every 5 minutes
+    # System metrics monitoring - every 1 minute
+    scheduler.add_job(
+        monitor_system_metrics,
+        trigger=IntervalTrigger(minutes=1),
+        id='system_metrics',
+        name='System Metrics Monitoring',
+        replace_existing=True
+    )
+    
+    # Sales product fetching - 4 times per day at specific hours
+    # STRICT LIMIT: 2 AM, 8 AM, 2 PM, 8 PM
+    for hour in SALES_FETCH_SCHEDULE:
+        scheduler.add_job(
+            sales_product_fetching,
+            trigger=CronTrigger(hour=hour, minute=0),
+            id=f'sales_fetch_{hour}',
+            name=f'Sales Product Fetch ({hour}:00)',
+            replace_existing=True
+        )
+    
+    # Cache data sync - every 5 minutes (lightweight)
     scheduler.add_job(
         sync_cache_data,
         trigger=IntervalTrigger(minutes=5),
@@ -159,17 +252,23 @@ def start_scheduler():
         replace_existing=True
     )
     
-    # System metrics monitoring - every 1 minute
+    # AI Content generation - runs during idle time every 30 minutes
     scheduler.add_job(
-        monitor_system_metrics,
-        trigger=IntervalTrigger(minutes=1),
-        id='system_metrics',
-        name='System Metrics Monitoring',
+        generate_ai_content_idle,
+        trigger=IntervalTrigger(minutes=30),
+        id='ai_content_idle',
+        name='AI Content Generation (Idle Time)',
         replace_existing=True
     )
     
+    # Start the optimized background scheduler
+    import asyncio
+    asyncio.create_task(optimized_scheduler.start())
+    asyncio.create_task(setup_optimized_tasks(database))
+    
     scheduler.start()
-    logger.info("Cron job scheduler started successfully")
+    logger.info("Cron job scheduler started successfully with optimized idle-time processing")
+    logger.info(f"Sales product fetching limited to 4 times per day: {SALES_FETCH_SCHEDULE}")
 
 
 def stop_scheduler():
@@ -179,7 +278,7 @@ def stop_scheduler():
 
 
 def get_scheduler_status():
-    """Get current scheduler status"""
+    """Get current scheduler status including optimized background tasks"""
     jobs = []
     for job in scheduler.get_jobs():
         jobs.append({
@@ -189,8 +288,26 @@ def get_scheduler_status():
             "trigger": str(job.trigger)
         })
     
+    # Get optimized scheduler status (async, run separately)
+    import asyncio
+    try:
+        optimized_status = asyncio.run(get_optimized_status())
+    except:
+        optimized_status = {"error": "Could not retrieve optimized scheduler status"}
+    
     return {
         "running": scheduler.running,
         "jobs": jobs,
-        "job_count": len(jobs)
+        "job_count": len(jobs),
+        "sales_fetch_schedule": SALES_FETCH_SCHEDULE,
+        "sales_fetch_limit": "4 times per day",
+        "optimized_scheduler": optimized_status,
+        "optimization_features": [
+            "Idle-time task execution",
+            "System load monitoring",
+            "AI content generation during low load",
+            "Sales fetching limited to 4x/day",
+            "Cache maintenance in background",
+            "Database optimization when idle"
+        ]
     }
