@@ -1,0 +1,118 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: idle-processor
+  namespace: production
+  labels:
+    app: idle-processor
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: idle-processor
+  template:
+    metadata:
+      labels:
+        app: idle-processor
+    spec:
+      containers:
+        - name: processor
+          image: propertyyards/idle-processor:latest
+          imagePullPolicy: Always
+          command: ["python", "-m", "app.idle_task_processor"]
+          env:
+            - name: ENVIRONMENT
+              value: "production"
+            - name: MONGODB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: mongodb-url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: redis-url
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 512Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cron-service
+  namespace: production
+  labels:
+    app: cron-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cron-service
+  template:
+    metadata:
+      labels:
+        app: cron-service
+    spec:
+      containers:
+        - name: cron
+          image: propertyyards/cron-service:latest
+          imagePullPolicy: Always
+          command: ["python", "-m", "app.cron"]
+          env:
+            - name: ENVIRONMENT
+              value: "production"
+            - name: MONGODB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: mongodb-url
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telegram-bot
+  namespace: production
+  labels:
+    app: telegram-bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: telegram-bot
+  template:
+    metadata:
+      labels:
+        app: telegram-bot
+    spec:
+      containers:
+        - name: bot
+          image: propertyyards/telegram-bot:latest
+          imagePullPolicy: Always
+          command: ["python", "-m", "app.telegram_bot"]
+          env:
+            - name: ENVIRONMENT
+              value: "production"
+            - name: TELEGRAM_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: telegram-bot-token
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi

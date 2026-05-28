@@ -1,0 +1,34 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: production
+
+resources:
+  - namespace.yaml
+  - api-deployment.yaml
+  - worker-deployment.yaml
+  - ingress.yaml
+
+images:
+  - name: propertyyards/api
+    newTag: latest
+  - name: propertyyards/idle-processor
+    newTag: latest
+  - name: propertyyards/cron-service
+    newTag: latest
+  - name: propertyyards/telegram-bot
+    newTag: latest
+
+configMapGenerator:
+  - name: app-config
+    literals:
+      - FORCE_HTTPS=true
+      - ENVIRONMENT=production
+      - API_VERSION=1.0.0
+
+secretGenerator:
+  - name: app-secrets
+    type: Opaque
+    literals:
+      - mongodb-url=mongodb://mongodb:27017/propertyyards
+      - redis-url=redis://redis:6379/0

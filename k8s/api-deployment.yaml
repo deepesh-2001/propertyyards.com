@@ -1,0 +1,155 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: propertyyards-api
+  namespace: production
+  labels:
+    app: propertyyards-api
+    version: v1
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: propertyyards-api
+  template:
+    metadata:
+      labels:
+        app: propertyyards-api
+        version: v1
+    spec:
+      containers:
+        - name: api
+          image: propertyyards/api:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: FORCE_HTTPS
+              value: "true"
+            - name: ENVIRONMENT
+              value: "production"
+            - name: MONGODB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: mongodb-url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: redis-url
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: gemini-api-key
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: logs
+              mountPath: /app/logs
+            - name: certs
+              mountPath: /app/certs
+              readOnly: true
+      volumes:
+        - name: logs
+          emptyDir: {}
+        - name: certs
+          secret:
+            secretName: tls-certs
+            optional: true
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - propertyyards-api
+                topologyKey: kubernetes.io/hostname
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: propertyyards-api
+  namespace: production
+spec:
+  selector:
+    app: propertyyards-api
+  ports:
+    - port: 80
+      targetPort: 8000
+      name: http
+    - port: 443
+      targetPort: 8000
+      name: https
+  type: ClusterIP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: propertyyards-api-hpa
+  namespace: production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: propertyyards-api
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
