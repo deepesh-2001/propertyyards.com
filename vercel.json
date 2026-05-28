@@ -1,25 +1,102 @@
 {
   "version": 2,
+  "name": "propertyyards-microservices",
   "builds": [
     {
-      "src": "backend/app/main.py",
-      "use": "@vercel/python"
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "frontend/dist"
+      }
+    },
+    {
+      "src": "microservices/api-gateway/server.js",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "backend/app/main.py"
+      "src": "/api/auth/(.*)",
+      "dest": "https://auth-service-propertyyards.vercel.app/api/auth/$1"
+    },
+    {
+      "src": "/api/properties/(.*)",
+      "dest": "https://property-service-propertyyards.vercel.app/api/properties/$1"
+    },
+    {
+      "src": "/api/users/(.*)",
+      "dest": "https://user-service-propertyyards.vercel.app/api/users/$1"
+    },
+    {
+      "src": "/api/reports/(.*)",
+      "dest": "https://report-service-propertyyards.vercel.app/api/reports/$1"
+    },
+    {
+      "src": "/api/insurance/(.*)",
+      "dest": "https://insurance-service-propertyyards.vercel.app/api/insurance/$1"
+    },
+    {
+      "src": "/api/ai/(.*)",
+      "dest": "https://ai-service-propertyyards.vercel.app/api/ai/$1"
+    },
+    {
+      "src": "/api/notifications/(.*)",
+      "dest": "https://notification-service-propertyyards.vercel.app/api/notifications/$1"
+    },
+    {
+      "src": "/api/analytics/(.*)",
+      "dest": "https://analytics-service-propertyyards.vercel.app/api/analytics/$1"
+    },
+    {
+      "src": "/api/health",
+      "dest": "microservices/api-gateway/server.js"
+    },
+    {
+      "src": "/api/gateway/(.*)",
+      "dest": "microservices/api-gateway/server.js"
     },
     {
       "src": "/(.*)",
-      "dest": "frontend/index.html"
+      "dest": "/frontend/$1"
     }
   ],
   "env": {
-    "DATABASE_URL": "@mongodb-atlas-connection-string",
+    "AUTH_SERVICE_URL": "https://auth-service-propertyyards.vercel.app",
+    "PROPERTY_SERVICE_URL": "https://property-service-propertyyards.vercel.app",
+    "USER_SERVICE_URL": "https://user-service-propertyyards.vercel.app",
+    "REPORT_SERVICE_URL": "https://report-service-propertyyards.vercel.app",
+    "INSURANCE_SERVICE_URL": "https://insurance-service-propertyyards.vercel.app",
+    "AI_SERVICE_URL": "https://ai-service-propertyyards.vercel.app",
+    "NOTIFICATION_SERVICE_URL": "https://notification-service-propertyyards.vercel.app",
+    "ANALYTICS_SERVICE_URL": "https://analytics-service-propertyyards.vercel.app",
+    "MONGODB_URL": "@mongodb-atlas-connection-string",
     "REDIS_URL": "@redis-connection-string",
-    "FIRECRAWL_API_KEY": "@firecrawl-api-key",
-    "JWT_SECRET_KEY": "@jwt_secret_key"
-  }
+    "JWT_SECRET_KEY": "@jwt-secret-key",
+    "RABBITMQ_URL": "@rabbitmq-url"
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization, X-Requested-With"
+        }
+      ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/health-check",
+      "schedule": "0 */6 * * *"
+    }
+  ]
 }

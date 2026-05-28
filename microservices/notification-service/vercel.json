@@ -1,0 +1,37 @@
+{
+  "version": 2,
+  "name": "notification-service",
+  "builds": [
+    {
+      "src": "app/main.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/notifications/(.*)",
+      "dest": "app/main.py"
+    },
+    {
+      "src": "/health",
+      "dest": "app/main.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "app/main.py"
+    }
+  ],
+  "env": {
+    "SERVICE_NAME": "notification-service",
+    "SERVICE_PORT": "8007",
+    "MONGODB_URL": "@mongodb-atlas-connection-string",
+    "REDIS_URL": "@redis-connection-string",
+    "JWT_SECRET_KEY": "@jwt-secret-key",
+    "SMTP_HOST": "@smtp-host",
+    "SMTP_PORT": "@smtp-port",
+    "SMTP_USER": "@smtp-user",
+    "SMTP_PASS": "@smtp-pass",
+    "TWILIO_SID": "@twilio-sid",
+    "TWILIO_TOKEN": "@twilio-token"
+  }
+}

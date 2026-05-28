@@ -1,0 +1,32 @@
+{
+  "version": 2,
+  "name": "user-service",
+  "builds": [
+    {
+      "src": "app/main.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/users/(.*)",
+      "dest": "app/main.py"
+    },
+    {
+      "src": "/health",
+      "dest": "app/main.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "app/main.py"
+    }
+  ],
+  "env": {
+    "SERVICE_NAME": "user-service",
+    "SERVICE_PORT": "8003",
+    "MONGODB_URL": "@mongodb-atlas-connection-string",
+    "REDIS_URL": "@redis-connection-string",
+    "JWT_SECRET_KEY": "@jwt-secret-key",
+    "AUTH_SERVICE_URL": "https://auth-service-propertyyards.vercel.app"
+  }
+}

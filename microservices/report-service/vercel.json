@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "name": "report-service",
+  "builds": [
+    {
+      "src": "app/main.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/reports/(.*)",
+      "dest": "app/main.py"
+    },
+    {
+      "src": "/health",
+      "dest": "app/main.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "app/main.py"
+    }
+  ],
+  "env": {
+    "SERVICE_NAME": "report-service",
+    "SERVICE_PORT": "8004",
+    "MONGODB_URL": "@mongodb-atlas-connection-string",
+    "REDIS_URL": "@redis-connection-string",
+    "JWT_SECRET_KEY": "@jwt-secret-key",
+    "AUTH_SERVICE_URL": "https://auth-service-propertyyards.vercel.app",
+    "PROPERTY_SERVICE_URL": "https://property-service-propertyyards.vercel.app"
+  }
+}
