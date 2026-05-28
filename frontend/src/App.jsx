@@ -5,6 +5,7 @@ import { Login, Register } from './components/Auth/Auth'
 import { PropertyList, PropertySearch } from './components/Properties/Properties'
 import { Whiteboard } from './components/Whiteboard/Whiteboard'
 import { Structure3D } from './components/Structure3D/Structure3D'
+import { TestFeatures } from './components/TestFeatures/TestFeatures'
 import './App.css'
 
 function ProtectedRoute({ children, isAuthenticated }) {
@@ -65,6 +66,14 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/test-features"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <TestFeatures />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Default Route */}
           <Route
@@ -113,6 +122,9 @@ function Navigation({ user }) {
           </a>
           <a href="/3d-structure" className="nav-link">
             3D Structure
+          </a>
+          <a href="/test-features" className="nav-link">
+            Test
           </a>
           {user && (
             <div className="user-info">
