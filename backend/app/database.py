@@ -247,6 +247,28 @@ async def create_indexes():
         await database.stakeholder_reports.create_index([("report_type", 1)])
         await database.stakeholder_reports.create_index([("created_at", -1)])
 
+        # Insurance quotes collection indexes
+        await database.insurance_quotes.create_index([("id", 1)], unique=True)
+        await database.insurance_quotes.create_index([("sale_id", 1)])
+        await database.insurance_quotes.create_index([("customer_id", 1)])
+        await database.insurance_quotes.create_index([("property_id", 1)])
+        await database.insurance_quotes.create_index([("insurance_type", 1)])
+        await database.insurance_quotes.create_index([("status", 1)])
+        await database.insurance_quotes.create_index([("created_at", -1)])
+        await database.insurance_quotes.create_index([("sale_id", 1), ("status", 1)])
+        await database.insurance_quotes.create_index([("customer_id", 1), ("status", 1)])
+
+        # Insurance plans collection indexes (for cached scraped data)
+        await database.insurance_plans.create_index([("id", 1)], unique=True)
+        await database.insurance_plans.create_index([("provider", 1)])
+        await database.insurance_plans.create_index([("insurance_type", 1)])
+        await database.insurance_plans.create_index([("coverage_amount", -1)])
+        await database.insurance_plans.create_index([("premium_yearly", 1)])
+        await database.insurance_plans.create_index([("rating", -1)])
+        await database.insurance_plans.create_index([("is_active", 1)])
+        await database.insurance_plans.create_index([("insurance_type", 1), ("provider", 1)])
+        await database.insurance_plans.create_index([("insurance_type", 1), ("rating", -1)])
+
         logger.info("Database indexes created successfully")
         
     except Exception as e:
