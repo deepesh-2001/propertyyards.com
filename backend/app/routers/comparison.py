@@ -32,64 +32,19 @@ async def search_flights(
     database=Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    """Search and compare flight prices across airlines"""
+    """Search and compare flight prices across airlines (via microservice)"""
     try:
-        from app.flight_comparison_service import flight_comparison, FlightSearchRequest as FCRequest, TripType, CabinClass
+        from app.api_gateway import api_gateway
 
-        # Convert request
-        fc_request = FCRequest(
-            origin=request.origin.upper(),
-            destination=request.destination.upper(),
-            departure_date=datetime.combine(request.departure_date, datetime.min.time()),
-            return_date=datetime.combine(request.return_date, datetime.min.time()) if request.return_date else None,
-            passengers=request.passengers,
-            cabin_class=CabinClass(request.cabin_class),
-            trip_type=TripType(request.trip_type)
+        # Forward request to flight-price microservice
+        result = await api_gateway.forward_request(
+            service_name="flight-price",
+            path="/search",
+            method="POST",
+            json_data=request.dict()
         )
 
-        # Search flights
-        results = await flight_comparison.search_flights(fc_request)
-
-        # Format response
-        return {
-            "search_params": {
-                "origin": request.origin,
-                "destination": request.destination,
-                "departure_date": request.departure_date.isoformat(),
-                "return_date": request.return_date.isoformat() if request.return_date else None,
-                "passengers": request.passengers,
-                "cabin_class": request.cabin_class
-            },
-            "total_results": len(results),
-            "results": [
-                {
-                    "id": r.id,
-                    "provider": r.provider,
-                    "price": r.price,
-                    "currency": r.currency,
-                    "cabin_class": r.cabin_class.value,
-                    "trip_type": r.trip_type.value,
-                    "outbound_segments": [
-                        {
-                            "airline": s.airline,
-                            "flight_number": s.flight_number,
-                            "departure_airport": s.departure_airport,
-                            "arrival_airport": s.arrival_airport,
-                            "departure_time": s.departure_time.isoformat(),
-                            "arrival_time": s.arrival_time.isoformat(),
-                            "duration_minutes": s.duration_minutes,
-                            "stops": s.stops,
-                            "aircraft_type": s.aircraft_type
-                        }
-                        for s in r.outbound_segments
-                    ],
-                    "baggage_included": r.baggage_included,
-                    "refundable": r.refundable,
-                    "booking_url": r.booking_url
-                }
-                for r in results[:20]  # Limit to 20 results
-            ]
-        }
+        return result
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid parameter: {e}")
@@ -106,40 +61,25 @@ async def get_cheapest_flight(
     cabin_class: str = "economy",
     database=Depends(get_db)
 ):
-    """Get cheapest flight for a route"""
+    """Get cheapest flight for a route (via microservice)"""
     try:
-        from app.flight_comparison_service import flight_comparison, FlightSearchRequest, TripType, CabinClass
+        from app.api_gateway import api_gateway
 
-        request = FlightSearchRequest(
-            origin=origin.upper(),
-            destination=destination.upper(),
-            departure_date=datetime.combine(departure_date, datetime.min.time()),
-            passengers=passengers,
-            cabin_class=CabinClass(cabin_class),
-            trip_type=TripType.ONE_WAY
+        # Forward request to flight-price microservice
+        result = await api_gateway.forward_request(
+            service_name="flight-price",
+            path="/cheapest",
+            method="GET",
+            params={
+                "origin": origin,
+                "destination": destination,
+                "departure_date": departure_date.isoformat(),
+                "passengers": passengers,
+                "cabin_class": cabin_class
+            }
         )
 
-        results = await flight_comparison.search_flights(request)
-        cheapest = flight_comparison.get_cheapest_offer(results)
-
-        if not cheapest:
-            raise HTTPException(status_code=404, detail="No flights found")
-
-        return {
-            "cheapest_flight": {
-                "id": cheapest.id,
-                "provider": cheapest.provider,
-                "price": cheapest.price,
-                "currency": cheapest.currency,
-                "departure_time": cheapest.outbound_segments[0].departure_time.isoformat() if cheapest.outbound_segments else None,
-                "duration_minutes": sum(s.duration_minutes for s in cheapest.outbound_segments),
-                "booking_url": cheapest.booking_url
-            },
-            "savings_potential": {
-                "max_price": max(r.price for r in results),
-                "savings": max(r.price for r in results) - cheapest.price
-            } if len(results) > 1 else None
-        }
+        return result
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -152,25 +92,29 @@ async def get_airports(
     country: Optional[str] = "IN",
     current_user: dict = Depends(get_current_user)
 ):
-    """Get list of airports"""
-    # Major Indian airports
-    airports = [
-        {"code": "DEL", "name": "Indira Gandhi International Airport", "city": "New Delhi", "country": "IN"},
-        {"code": "BOM", "name": "Chhatrapati Shivaji Maharaj International Airport", "city": "Mumbai", "country": "IN"},
-        {"code": "BLR", "name": "Kempegowda International Airport", "city": "Bangalore", "country": "IN"},
-        {"code": "MAA", "name": "Chennai International Airport", "city": "Chennai", "country": "IN"},
-        {"code": "HYD", "name": "Rajiv Gandhi International Airport", "city": "Hyderabad", "country": "IN"},
-        {"code": "CCU", "name": "Netaji Subhas Chandra Bose International Airport", "city": "Kolkata", "country": "IN"},
-        {"code": "AMD", "name": "Sardar Vallabhbhai Patel International Airport", "city": "Ahmedabad", "country": "IN"},
-        {"code": "PNQ", "name": "Pune Airport", "city": "Pune", "country": "IN"},
-        {"code": "JAI", "name": "Jaipur International Airport", "city": "Jaipur", "country": "IN"},
-        {"code": "COK", "name": "Cochin International Airport", "city": "Kochi", "country": "IN"}
-    ]
+    """Get list of airports (via microservice)"""
+    try:
+        from app.api_gateway import api_gateway
 
-    if country and country != "IN":
-        airports = [a for a in airports if a["country"] == country]
+        result = await api_gateway.forward_request(
+            service_name="flight-price",
+            path="/airports",
+            method="GET",
+            params={"country": country}
+        )
 
-    return {"airports": airports}
+        return result
+
+    except Exception:
+        # Fallback to local data if microservice unavailable
+        airports = [
+            {"code": "DEL", "name": "Indira Gandhi International", "city": "New Delhi"},
+            {"code": "BOM", "name": "Chhatrapati Shivaji Maharaj", "city": "Mumbai"},
+            {"code": "BLR", "name": "Kempegowda International", "city": "Bangalore"},
+            {"code": "MAA", "name": "Chennai International", "city": "Chennai"},
+            {"code": "HYD", "name": "Rajiv Gandhi International", "city": "Hyderabad"},
+        ]
+        return {"airports": airports, "source": "fallback"}
 
 
 # ========== Price Comparison ==========
