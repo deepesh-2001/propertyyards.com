@@ -10,7 +10,7 @@ import logging
 import sys
 
 from app.config import settings
-from app.routers import auth, users, properties, inquiries, admin, crm, referral, access, loan_calculator, contact, notifications, chatbot, brokers, reports, monitoring, recruitment, payments, self_healing, salary, commission, prediction, feedback, credit_card, reimbursement, claims, tax, onboarding, scraper, property_onboarding, feature_flags, whiteboard, analytics, cache_management, properties_cached, realtime, admin_portal, social_media, telegram, news, operations, architecture, ai_costs, ai_seo, comparison, cashback, deployment, insurance
+from app.routers import auth, users, properties, inquiries, admin, crm, referral, access, loan_calculator, contact, notifications, chatbot, brokers, reports, monitoring, recruitment, payments, self_healing, salary, commission, prediction, feedback, credit_card, reimbursement, claims, tax, onboarding, scraper, property_onboarding, feature_flags, whiteboard, analytics, cache_management, properties_cached, realtime, admin_portal, social_media, telegram, news, operations, architecture, ai_costs, ai_seo, comparison, cashback, deployment, tickets, rewards, insurance
 from app import health, cron
 from app.access import AccessControl
 from app.security import setup_security_middleware
@@ -175,6 +175,8 @@ app.include_router(ai_seo.router)
 app.include_router(comparison.router)
 app.include_router(cashback.router)
 app.include_router(deployment.router)
+app.include_router(tickets.router)
+app.include_router(rewards.router)
 app.include_router(health.router)
 
 # Setup security middleware
@@ -211,6 +213,23 @@ async def app_status():
     from app.unified_startup import bootstrapper
     status = bootstrapper.get_status()
     return status
+
+
+@app.get("/routes")
+async def list_routes():
+    """List all registered API routes (for debugging)"""
+    routes = []
+    for route in app.routes:
+        if hasattr(route, "methods") and hasattr(route, "path"):
+            routes.append({
+                "path": route.path,
+                "methods": list(route.methods),
+                "name": route.name
+            })
+    return {
+        "total_routes": len(routes),
+        "routes": sorted(routes, key=lambda x: x["path"])
+    }
 
 
 @app.get("/services")

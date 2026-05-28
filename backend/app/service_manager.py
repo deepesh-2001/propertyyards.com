@@ -69,6 +69,9 @@ class ServiceManager:
                 ("flight_comparison", self._init_flight_comparison, []),
                 ("price_comparison", self._init_price_comparison, []),
                 ("cashback", self._init_cashback, []),
+                ("rewards", self._init_rewards, []),
+                ("ticket_booking", self._init_ticket_booking, []),
+                ("deployment", self._init_deployment, []),
                 ("idle_processor", self._init_idle_processor, ["all"]),
             ]
 
@@ -244,6 +247,28 @@ class ServiceManager:
         await cashback_service.initialize()
         logger.info("Cashback Service initialized")
         return cashback_service
+
+    async def _init_rewards(self, database, settings):
+        """Initialize rewards service"""
+        from app.rewards_service import rewards_service
+        await rewards_service.initialize()
+        logger.info("Rewards Service initialized")
+        return rewards_service
+
+    async def _init_ticket_booking(self, database, settings):
+        """Initialize ticket booking service"""
+        from app.ticket_booking_service import ticket_booking
+        
+        provider_keys = {
+            "amadeus": getattr(settings, 'AMADEUS_API_KEY', None),
+            "skyscanner": getattr(settings, 'SKYSCANNER_BOOKING_KEY', None),
+            "cleartrip": getattr(settings, 'CLEARTRIP_API_KEY', None),
+            "make_my_trip": getattr(settings, 'MMT_API_KEY', None)
+        }
+        
+        await ticket_booking.initialize(provider_keys)
+        logger.info("Ticket Booking Service initialized")
+        return ticket_booking
 
     async def _init_deployment(self, database, settings):
         """Initialize deployment service"""
