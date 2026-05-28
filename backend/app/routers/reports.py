@@ -3,13 +3,15 @@ Reports Router
 Endpoints for generating and downloading Excel reports
 """
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import Response
-from app.database import get_database
+from fastapi.responses import Response, StreamingResponse
+from app.database import get_database, get_db
 from app.reports import ReportGenerator, ReportType
 from app.info_collection import InfoCollection, InfoType
 from app.auth import decode_token
-from datetime import datetime
+from datetime import datetime, timedelta
+from typing import Optional, Dict, Any, List
 import logging
+import io
 
 logger = logging.getLogger(__name__)
 
@@ -382,7 +384,6 @@ async def get_info_summary(
 # ========== Stakeholder CSV/PDF Reports ==========
 
 from app.report_generator import report_generator, ReportConfig, ReportType, ReportFormat
-from fastapi.responses import StreamingResponse
 
 
 @router.post("/stakeholder/generate")
@@ -645,9 +646,6 @@ async def get_sales_report(
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
 
-    from app.report_generator import report_generator, ReportConfig, ReportType, ReportFormat
-    from fastapi.responses import StreamingResponse
-
     start_dt = None
     end_dt = None
 
@@ -705,9 +703,6 @@ async def get_projections_report(
     if current_user["role"] not in ["admin", "manager"]:
         raise HTTPException(status_code=403, detail="Admin or Manager access required")
 
-    from app.report_generator import report_generator, ReportConfig, ReportType, ReportFormat
-    from fastapi.responses import StreamingResponse
-
     config = ReportConfig(
         report_type=ReportType.PROJECTIONS,
         format=ReportFormat(format),
@@ -744,9 +739,6 @@ async def get_future_growth_report(
 
     if current_user["role"] not in ["admin", "manager"]:
         raise HTTPException(status_code=403, detail="Admin or Manager access required")
-
-    from app.report_generator import report_generator, ReportConfig, ReportType, ReportFormat
-    from fastapi.responses import StreamingResponse
 
     config = ReportConfig(
         report_type=ReportType.FUTURE_GROWTH,
@@ -786,9 +778,6 @@ async def get_future_projects_report(
     if current_user["role"] not in ["admin", "manager"]:
         raise HTTPException(status_code=403, detail="Admin or Manager access required")
 
-    from app.report_generator import report_generator, ReportConfig, ReportType, ReportFormat
-    from fastapi.responses import StreamingResponse
-
     config = ReportConfig(
         report_type=ReportType.FUTURE_PROJECTS,
         format=ReportFormat(format),
@@ -826,9 +815,6 @@ async def get_investment_opportunities_report(
 
     if current_user["role"] not in ["admin", "manager"]:
         raise HTTPException(status_code=403, detail="Admin or Manager access required")
-
-    from app.report_generator import report_generator, ReportConfig, ReportType, ReportFormat
-    from fastapi.responses import StreamingResponse
 
     config = ReportConfig(
         report_type=ReportType.INVESTMENT_OPPORTUNITIES,
@@ -959,6 +945,3 @@ async def generate_ai_projection(
         ],
         "generated_at": datetime.utcnow().isoformat()
     }
-
-
-import io
