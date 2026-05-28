@@ -4075,3 +4075,217 @@ class PropertyOnboardingAnalytics(BaseModel):
     manual_review_count: int
     monthly_trend: List[Dict[str, Any]]
 
+
+# ========== Whiteboard Schemas ==========
+
+class WhiteboardItemType(str, Enum):
+    """Types of whiteboard items"""
+    TEXT = "text"
+    SHAPE = "shape"
+    IMAGE = "image"
+    DRAWING = "drawing"
+    NOTE = "note"
+    STICKER = "sticker"
+    ARROW = "arrow"
+    LINE = "line"
+
+
+class WhiteboardPermission(str, Enum):
+    """Whiteboard sharing permissions"""
+    VIEW = "view"
+    EDIT = "edit"
+    ADMIN = "admin"
+
+
+class WhiteboardItemCreate(BaseModel):
+    """Schema for creating a whiteboard item"""
+    item_type: WhiteboardItemType
+    x: float
+    y: float
+    width: Optional[float] = None
+    height: Optional[float] = None
+    content: Optional[str] = None
+    color: Optional[str] = "#000000"
+    background_color: Optional[str] = "#ffffff"
+    font_size: Optional[int] = 14
+    rotation: Optional[float] = 0
+    z_index: Optional[int] = 0
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class WhiteboardItemUpdate(BaseModel):
+    """Schema for updating a whiteboard item"""
+    x: Optional[float] = None
+    y: Optional[float] = None
+    width: Optional[float] = None
+    height: Optional[float] = None
+    content: Optional[str] = None
+    color: Optional[str] = None
+    background_color: Optional[str] = None
+    font_size: Optional[int] = None
+    rotation: Optional[float] = None
+    z_index: Optional[int] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class WhiteboardItemResponse(BaseModel):
+    """Schema for whiteboard item response"""
+    id: str
+    item_type: WhiteboardItemType
+    x: float
+    y: float
+    width: Optional[float] = None
+    height: Optional[float] = None
+    content: Optional[str] = None
+    color: Optional[str] = None
+    background_color: Optional[str] = None
+    font_size: Optional[int] = None
+    rotation: Optional[float] = None
+    z_index: Optional[int] = None
+    metadata: Optional[Dict[str, Any]] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class WhiteboardCreate(BaseModel):
+    """Schema for creating a whiteboard"""
+    title: str
+    description: Optional[str] = None
+    background_color: Optional[str] = "#ffffff"
+    grid_enabled: Optional[bool] = True
+    is_public: Optional[bool] = False
+    tags: Optional[List[str]] = []
+
+
+class WhiteboardUpdate(BaseModel):
+    """Schema for updating a whiteboard"""
+    title: Optional[str] = None
+    description: Optional[str] = None
+    background_color: Optional[str] = None
+    grid_enabled: Optional[bool] = None
+    is_public: Optional[bool] = None
+    tags: Optional[List[str]] = None
+
+
+class WhiteboardResponse(BaseModel):
+    """Schema for whiteboard response"""
+    id: str
+    title: str
+    description: Optional[str] = None
+    background_color: str
+    grid_enabled: bool
+    is_public: bool
+    tags: List[str]
+    owner_id: str
+    items: List[WhiteboardItemResponse] = []
+    created_at: datetime
+    updated_at: datetime
+
+
+class WhiteboardShareCreate(BaseModel):
+    """Schema for sharing a whiteboard"""
+    user_id: str
+    permission: WhiteboardPermission = WhiteboardPermission.VIEW
+
+
+class WhiteboardShareResponse(BaseModel):
+    """Schema for whiteboard share response"""
+    id: str
+    whiteboard_id: str
+    user_id: str
+    permission: WhiteboardPermission
+    shared_by: str
+    created_at: datetime
+
+
+class WhiteboardListResponse(BaseModel):
+    """Schema for whiteboard list response"""
+    id: str
+    title: str
+    description: Optional[str] = None
+    is_public: bool
+    owner_id: str
+    owner_name: Optional[str] = None
+    item_count: int
+    created_at: datetime
+    updated_at: datetime
+
+
+# ========== Enhanced Analytics Schemas ==========
+
+class PropertyAnalytics(BaseModel):
+    """Property analytics schema"""
+    total_properties: int
+    active_properties: int
+    sold_properties: int
+    pending_properties: int
+    by_type: Dict[str, int]
+    by_city: Dict[str, int]
+    by_price_range: Dict[str, int]
+    average_price: float
+    median_price: float
+    price_trend: List[Dict[str, Any]]
+    monthly_listings: List[Dict[str, Any]]
+    top_cities: List[Dict[str, Any]]
+    conversion_rate: float
+    average_days_to_sell: float
+
+
+class UserAnalytics(BaseModel):
+    """User analytics schema"""
+    total_users: int
+    active_users: int
+    new_users_this_month: int
+    by_role: Dict[str, int]
+    by_city: Dict[str, Any]
+    user_growth_trend: List[Dict[str, Any]]
+    active_sessions: int
+    average_session_duration: float
+
+
+class RevenueAnalytics(BaseModel):
+    """Revenue analytics schema"""
+    total_revenue: float
+    revenue_this_month: float
+    revenue_this_quarter: float
+    revenue_this_year: float
+    by_source: Dict[str, float]
+    by_payment_method: Dict[str, float]
+    monthly_revenue_trend: List[Dict[str, Any]]
+    average_transaction_value: float
+    growth_rate: float
+
+
+class CommissionAnalytics(BaseModel):
+    """Commission analytics schema"""
+    total_commissions: float
+    pending_commissions: float
+    paid_commissions: float
+    by_recipient: List[Dict[str, Any]]
+    by_type: Dict[str, float]
+    monthly_commission_trend: List[Dict[str, Any]]
+    top_performers: List[Dict[str, Any]]
+    average_commission: float
+
+
+class InquiryAnalytics(BaseModel):
+    """Inquiry analytics schema"""
+    total_inquiries: int
+    inquiries_this_month: int
+    response_rate: float
+    average_response_time_hours: float
+    by_status: Dict[str, int]
+    by_property: List[Dict[str, Any]]
+    conversion_to_sale: float
+    monthly_inquiry_trend: List[Dict[str, Any]]
+
+
+class DashboardAnalytics(BaseModel):
+    """Combined dashboard analytics"""
+    property_analytics: PropertyAnalytics
+    user_analytics: UserAnalytics
+    revenue_analytics: RevenueAnalytics
+    commission_analytics: CommissionAnalytics
+    inquiry_analytics: InquiryAnalytics
+    generated_at: datetime
+
