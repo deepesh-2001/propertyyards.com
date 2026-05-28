@@ -1,18 +1,27 @@
 """
 Cron job scheduler for periodic tasks
+Optimized to run during idle time with AI content generation
+Sales product fetching limited to 4 times per day
 """
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime
 import logging
 from app.cache import cache, get_from_cache, set_in_cache
 from app.database import database
 from app.config import settings
+from app.optimized_background_tasks import (
+    optimized_scheduler, setup_optimized_tasks, get_scheduler_status as get_optimized_status
+)
 
 logger = logging.getLogger(__name__)
 
 # Create scheduler
 scheduler = AsyncIOScheduler()
+
+# Sales fetch schedule: 4 times per day at 2 AM, 8 AM, 2 PM, 8 PM
+SALES_FETCH_SCHEDULE = [2, 8, 14, 20]
 
 
 async def check_cache_health():
