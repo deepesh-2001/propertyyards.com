@@ -68,6 +68,7 @@ class ServiceManager:
                 ("auto_healing", self._init_auto_healing, []),
                 ("flight_comparison", self._init_flight_comparison, []),
                 ("price_comparison", self._init_price_comparison, []),
+                ("cashback", self._init_cashback, []),
                 ("idle_processor", self._init_idle_processor, ["all"]),
             ]
 
@@ -236,6 +237,13 @@ class ServiceManager:
             "generator": ai_article_generator,
             "manager": article_manager
         }
+
+    async def _init_cashback(self, database, settings):
+        """Initialize cashback service"""
+        from app.cashback_service import cashback_service
+        await cashback_service.initialize()
+        logger.info("Cashback Service initialized")
+        return cashback_service
 
     async def _init_idle_processor(self, database, settings):
         """Initialize idle task processor"""
