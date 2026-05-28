@@ -1,0 +1,8 @@
+# Ignore backend files to prevent Python detection
+../backend
+../microservices
+../tests
+*.py
+requirements.txt
+pyproject.toml
+pytest.ini
