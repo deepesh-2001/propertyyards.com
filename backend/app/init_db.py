@@ -4,6 +4,7 @@ Database initialization script for MongoDB
 from app.database import init_database, close_database, database
 from app.models import User, UserRole
 from app.auth import hash_password
+from app.access import AccessControl
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -16,6 +17,11 @@ async def init_db():
         # Initialize database connection
         await init_database()
         logger.info("✓ MongoDB connected successfully")
+
+        # Initialize access control roles
+        access_control = AccessControl(database)
+        await access_control.initialize_default_roles()
+        logger.info("✓ Access control roles initialized")
 
         # Check if admin user exists
         admin = await database.users.find_one({"role": "admin"})
@@ -31,7 +37,7 @@ async def init_db():
                 is_active=True
             )
             await database.users.insert_one(admin_user.dict())
-            logger.info(f"✓ Admin user created: admin@housing.com")
+            logger.info(f"✓ Admin user created: admin@housing.com / admin@housing123")
 
         # Check if test seller exists
         seller = await database.users.find_one({"email": "seller@housing.com"})
@@ -47,7 +53,7 @@ async def init_db():
                 is_active=True
             )
             await database.users.insert_one(seller_user.dict())
-            logger.info(f"✓ Test seller user created: seller@housing.com")
+            logger.info(f"✓ Test seller user created: seller@housing.com / seller@housing123")
 
         # Check if test buyer exists
         buyer = await database.users.find_one({"email": "buyer@housing.com"})
@@ -63,9 +69,31 @@ async def init_db():
                 is_active=True
             )
             await database.users.insert_one(buyer_user.dict())
-            logger.info(f"✓ Test buyer user created: buyer@housing.com")
+            logger.info(f"✓ Test buyer user created: buyer@housing.com / buyer@housing123")
+
+        # Check if test agent exists
+        agent = await database.users.find_one({"email": "agent@housing.com"})
+        if not agent:
+            logger.info("Creating test agent user...")
+            agent_user = User(
+                email="agent@housing.com",
+                first_name="Bob",
+                last_name="Agent",
+                phone_number="+1-555-0103",
+                password_hash=hash_password("agent@housing123"),
+                role=UserRole.AGENT,
+                is_active=True
+            )
+            await database.users.insert_one(agent_user.dict())
+            logger.info(f"✓ Test agent user created: agent@housing.com / agent@housing123")
 
         logger.info("✓ Database initialization completed successfully!")
+        logger.info("\n=== Default Users ===")
+        logger.info("Admin: admin@housing.com / admin@housing123")
+        logger.info("Seller: seller@housing.com / seller@housing123")
+        logger.info("Buyer: buyer@housing.com / buyer@housing123")
+        logger.info("Agent: agent@housing.com / agent@housing123")
+        logger.info("====================\n")
 
     except Exception as e:
         logger.error(f"Error during database initialization: {e}")

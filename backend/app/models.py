@@ -37,21 +37,10 @@ class PropertyType(str, Enum):
     COMMERCIAL = "commercial"
 
 
-# MongoDB Document Models
-class User(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    email: EmailStr
-    first_name: str
-    last_name: str
-    phone_number: Optional[str] = None
-    password_hash: str
-    role: UserRole = UserRole.BUYER
-    is_active: bool = True
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-
-    class Config:
-        collection_name = "users"
+class ListingType(str, Enum):
+    SALE = "sale"
+    RENT = "rent"
+    BOTH = "both"
 
 
 class Property(BaseModel):
@@ -65,12 +54,25 @@ class Property(BaseModel):
     country: str
     price: float
     property_type: PropertyType
+    listing_type: ListingType = ListingType.SALE
     bedrooms: int
     bathrooms: int
     area: float
     amenities: List[str] = []
     images: List[str] = []
     status: PropertyStatus = PropertyStatus.LISTED
+    # Rental specific fields
+    rent_period: Optional[str] = None  # monthly, yearly, weekly
+    deposit_amount: Optional[float] = None
+    lease_duration: Optional[str] = None  # 6 months, 1 year, etc.
+    furnished: bool = False
+    pets_allowed: bool = False
+    # Broker information
+    broker_id: Optional[str] = None
+    broker_name: Optional[str] = None
+    broker_phone: Optional[str] = None
+    broker_email: Optional[EmailStr] = None
+    broker_commission: Optional[float] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -112,4 +114,43 @@ class AuditLog(BaseModel):
 
     class Config:
         collection_name = "audit_logs"
+
+
+class Broker(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    name: str
+    phone: str
+    email: EmailStr
+    license_number: Optional[str] = None
+    agency_name: Optional[str] = None
+    agency_address: Optional[str] = None
+    specialization: List[str] = []  # residential, commercial, rental, etc.
+    commission_rate: Optional[float] = None
+    years_of_experience: Optional[int] = None
+    languages_spoken: List[str] = []
+    rating: Optional[float] = None
+    total_deals: Optional[int] = None
+    bio: Optional[str] = None
+    profile_image: Optional[str] = None
+    is_verified: bool = False
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        collection_name = "brokers"
+
+
+class ChatConversation(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    session_id: str
+    messages: List[dict] = []
+    context: Optional[dict] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        collection_name = "chat_conversations"
 
