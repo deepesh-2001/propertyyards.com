@@ -69,57 +69,94 @@
 
 ## Architecture
 
-See **[ARCHITECTURE.md](ARCHITECTURE.md)** for the full system diagram and component breakdown.
+### Monolithic Service Architecture
+
+PropertyYards uses a **centralized monolithic architecture** with a `ServiceManager` that handles all service lifecycle, dependencies, and health monitoring.
 
 ```
 housing_platform/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py              # FastAPI entry point, router registration
-│   │   ├── schemas.py           # All Pydantic models & enums
-│   │   ├── database.py          # Motor (async MongoDB) client
-│   │   ├── cache.py             # Redis cache layer
-│   │   ├── auth.py              # JWT + RBAC helpers
-│   │   ├── commission.py        # Commission engine
-│   │   ├── credit_card.py       # Rewards & cashback engine
-│   │   ├── salary.py            # Payroll processor + SalaryCalculator
-│   │   ├── reimbursement.py     # Expense reimbursement lifecycle
-│   │   ├── claims.py            # Claims lifecycle
-│   │   ├── tax.py               # Indian IT engine + Form-16
-│   │   ├── notification.py      # Multi-channel notification service
-│   │   └── routers/
-│   │       ├── auth.py          · POST /api/auth/*
-│   │       ├── users.py         · GET|PUT /api/users/*
-│   │       ├── properties.py    · CRUD /api/properties/*
-│   │       ├── inquiries.py     · /api/inquiries/*
-│   │       ├── brokers.py       · /api/brokers/*
-│   │       ├── commission.py    · /api/commission/*
-│   │       ├── credit_card.py   · /api/credit-cards/*
-│   │       ├── salary.py        · /api/salary/*
-│   │       ├── reimbursement.py · /api/reimbursements/*
-│   │       ├── claims.py        · /api/claims/*
-│   │       ├── tax.py           · /api/tax/*
-│   │       ├── payments.py      · /api/payments/*
-│   │       ├── referral.py      · /api/referral/*
-│   │       ├── loan_calculator.py · /api/loan/*
-│   │       ├── recruitment.py   · /api/recruitment/*
-│   │       ├── admin.py         · /api/admin/*
-│   │       ├── reports.py       · /api/reports/*
-│   │       └── monitoring.py    · /api/monitoring/*
-│   ├── tests/
-│   │   ├── test_api.py
-│   │   └── test_load.py
-│   └── requirements.txt
-├── tests/                       # Root-level pytest suite
-│   ├── conftest.py
-│   ├── test_commission_credit_salary.py
-│   └── test_integration.py
-├── frontend/                    # React + Vite application
-├── docker-compose.yml
-├── ARCHITECTURE.md              # Mermaid system diagrams
-├── FLOWCHARTS.md                # Business-flow diagrams
-├── SWAGGER_GUIDE.md             # OpenAPI / Swagger reference
-└── pytest.ini
+│   │   ├── main.py                  # FastAPI entry, unified startup
+│   │   ├── unified_startup.py       # Centralized bootstrapper
+│   │   ├── service_manager.py       # Monolithic service container
+│   │   ├── database.py              # MongoDB with replica set
+│   │   ├── cache.py                 # Redis cache layer
+│   │   ├── cache_pipeline.py        # Redis pipeline ops
+│   │   ├── persistent_cache.py      # MongoDB persistent cache
+│   │   ├── db_optimized.py          # Query optimization
+│   │   ├── auth.py                  # JWT + RBAC
+│   │   ├── security.py              # Security middleware
+│   │   ├── realtime_analytics.py    # Minute-by-minute analytics
+│   │   ├── predictive_analytics.py  # AI forecasting
+│   │   ├── ai_image_service.py      # DALL-E image generation
+│   │   ├── news_service.py          # AI article generation
+│   │   ├── telegram_bot.py          # Telegram bot
+│   │   ├── social_media_manager.py  # Social automation
+│   │   ├── idle_task_processor.py   # Idle-time processing
+│   │   ├── background_tasks.py      # Background workers
+│   │   ├── timeseries.py            # Time-series storage
+│   │   ├── websocket_manager.py     # WebSocket connections
+│   │   ├── cache_decorators.py      # Cache decorators
+│   │   ├── routers/
+│   │   │   ├── auth.py
+│   │   │   ├── users.py
+│   │   │   ├── properties.py
+│   │   │   ├── properties_cached.py # Cached property routes
+│   │   │   ├── inquiries.py
+│   │   │   ├── analytics.py
+│   │   │   ├── whiteboard.py        # Collaborative whiteboard
+│   │   │   ├── admin_portal.py      # Admin dashboard
+│   │   │   ├── realtime.py          # Real-time endpoints
+│   │   │   ├── cache_management.py  # Cache API
+│   │   │   ├── social_media.py      # Social media API
+│   │   │   ├── telegram.py          # Telegram webhooks
+│   │   │   ├── news.py              # News/Articles API
+│   │   │   └── [existing routers...]
+│   └── tests/
+├── frontend/                        # React + Vite
+├── docker-compose.yml               # MongoDB replica set + Redis
+└── README.md
+```
+
+### Service Manager Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    ServiceManager                            │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐         │
+│  │   Services   │ │ Health Check │ │ Dependencies │         │
+│  │              │ │              │ │              │         │
+│  │ - cache      │ │ Status: OK   │ │ cache → db   │         │
+│  │ - database   │ │ Status: OK   │ │ db → analytics│         │
+│  │ - analytics  │ │ Status: OK   │ │ ai → image   │         │
+│  │ - ai_image   │ │              │ │              │         │
+│  │ - social     │ │              │ │              │         │
+│  └──────────────┘ └──────────────┘ └──────────────┘         │
+├─────────────────────────────────────────────────────────────┤
+│  UnifiedCacheManager    │   ConnectionPoolManager          │
+│  - Local + Redis Cache  │   - MongoDB (100 max)             │
+│  - Stats tracking       │   - Redis (50 max)                │
+│  - Pattern invalidation │   - HTTP (20 max)                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Three-Tier Caching Architecture
+
+```
+┌─────────────────────────────────────────┐
+│  Tier 1: Local Cache (In-Memory)          │
+│  - 1000 items, 60s TTL                    │
+│  - Sub-millisecond access                 │
+├─────────────────────────────────────────┤
+│  Tier 2: Redis Cache                      │
+│  - 5-30 min TTL                           │
+│  - Distributed across instances           │
+├─────────────────────────────────────────┤
+│  Tier 3: Persistent (MongoDB)             │
+│  - 1-24 hour TTL                          │
+│  - Survives restarts                      │
+└─────────────────────────────────────────┘
 ```
 
 ---
@@ -136,6 +173,22 @@ housing_platform/
 | Tax | `app/tax.py` | Indian IT slab tax, TDS, Form-16 |
 | Notification | `app/notification.py` | Email, WhatsApp, SMS, push notifications |
 | Auth | `app/auth.py` | JWT, OTP, RBAC |
+| Service Manager | `app/service_manager.py` | Monolithic service container |
+| Unified Startup | `app/unified_startup.py` | Centralized bootstrapper |
+| Realtime Analytics | `app/realtime_analytics.py` | Minute-by-minute analytics tracking |
+| Predictive Analytics | `app/predictive_analytics.py` | AI forecasting & trend analysis |
+| AI Image Service | `app/ai_image_service.py` | DALL-E image generation |
+| News Service | `app/news_service.py` | AI article generation from templates |
+| Telegram Bot | `app/telegram_bot.py` | Telegram bot for notifications |
+| Social Media | `app/social_media_manager.py` | Automated social posting |
+| Idle Processor | `app/idle_task_processor.py` | Idle-time background tasks |
+| Cache Pipeline | `app/cache_pipeline.py` | Redis pipeline operations |
+| Persistent Cache | `app/persistent_cache.py` | MongoDB cache storage |
+| DB Optimized | `app/db_optimized.py` | Query optimization & connection pool |
+| Security | `app/security.py` | Security middleware & headers |
+| WebSocket Manager | `app/websocket_manager.py` | Real-time WebSocket connections |
+| Time Series | `app/timeseries.py` | Time-series data storage |
+| Cache Decorators | `app/cache_decorators.py` | @cached decorators |
 | Fraud Detection | `app/routers/fraud_detection.py` | Anomaly scoring on transactions |
 | Prediction | `app/routers/prediction.py` | AI price prediction |
 | Self-Healing | `app/routers/self_healing.py` | Service health recovery |
@@ -238,6 +291,65 @@ housing_platform/
 | POST | `/api/referral/rewards/{id}/claim` | Claim reward |
 | GET | `/api/referral/stats` | Referral stats |
 
+### Realtime & WebSocket
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/realtime/dashboard` | Real-time dashboard data |
+| GET | `/api/realtime/forecasts` | AI predictions |
+| GET | `/api/realtime/market-outlook` | Market forecast |
+| WS | `/ws/analytics` | WebSocket for live analytics |
+| WS | `/ws/notifications` | WebSocket for notifications |
+
+### Cache Management
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/cache/stats` | Cache statistics |
+| POST | `/api/cache/warm` | Warm cache |
+| POST | `/api/cache/invalidate` | Invalidate by pattern |
+| POST | `/api/cache/preload` | Preload popular data |
+
+### Admin Portal
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/admin/portal/dashboard` | Admin dashboard |
+| GET | `/api/admin/portal/users/management` | User management |
+| GET | `/api/admin/portal/properties/management` | Property management |
+| POST | `/api/admin/portal/ai/generate-property-image` | Generate AI images |
+| POST | `/api/admin/portal/system/clear-cache` | Clear cache |
+
+### Social Media
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/social-media/dashboard` | Social dashboard |
+| POST | `/api/social-media/schedule` | Schedule post |
+| POST | `/api/social-media/post-now` | Post immediately |
+| POST | `/api/social-media/auto-generate` | Auto-generate posts |
+| GET | `/api/social-media/analytics` | Social analytics |
+
+### Telegram
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/telegram/webhook` | Telegram webhook |
+| GET | `/api/telegram/subscribers` | List subscribers |
+| POST | `/api/telegram/broadcast` | Broadcast message |
+
+### News & Articles
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/news/articles` | List articles |
+| GET | `/api/news/articles/{id}` | Get article |
+| POST | `/api/news/admin/generate` | Generate AI article |
+| POST | `/api/news/admin/rewrite` | Rewrite external article |
+| POST | `/api/news/admin/fetch-news` | Fetch external news |
+| POST | `/api/news/admin/publish/{id}` | Publish article |
+
+### System Health
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Health check |
+| GET | `/status` | Application status |
+| GET | `/services` | All service statuses |
+
 ---
 
 ## Getting Started
@@ -286,6 +398,7 @@ Starts: FastAPI `:8000` · React `:3000` · MongoDB `:27017` · Redis `:6379`
 
 ## Environment Variables
 
+### Core Configuration
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DATABASE_URL` | `mongodb://localhost:27017/housing_db` | MongoDB URI |
@@ -297,6 +410,40 @@ Starts: FastAPI `:8000` · React `:3000` · MongoDB `:27017` · Redis `:6379`
 | `COMPANY_NAME` | `Housing Platform Pvt Ltd` | Used in Form-16 |
 | `SMTP_HOST` | — | Email notifications |
 | `SMTP_PORT` | `587` | SMTP port |
+
+### AI & ML Services
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OPENAI_API_KEY` | — | OpenAI API for image & article generation |
+| `OPENAI_IMAGE_MODEL` | `dall-e-3` | Image generation model |
+| `NEWS_AUTHOR_NAME` | `PropertyYards Team` | Author name for AI articles |
+| `AUTO_PUBLISH_NEWS` | `false` | Auto-publish generated articles |
+
+### Social Media Integration
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FACEBOOK_ACCESS_TOKEN` | — | Facebook page token |
+| `FACEBOOK_PAGE_ID` | — | Facebook page ID |
+| `INSTAGRAM_ACCESS_TOKEN` | — | Instagram API token |
+| `TWITTER_API_KEY` | — | Twitter API key |
+| `TWITTER_API_SECRET` | — | Twitter API secret |
+| `LINKEDIN_ACCESS_TOKEN` | — | LinkedIn API token |
+
+### Telegram Bot
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TELEGRAM_BOT_TOKEN` | — | Telegram bot token |
+| `TELEGRAM_WEBHOOK_URL` | — | Webhook URL for Telegram |
+
+### Performance Tuning
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MAX_DB_CONNECTIONS` | `100` | MongoDB connection pool size |
+| `MAX_REDIS_CONNECTIONS` | `50` | Redis connection pool size |
+| `MAX_HTTP_CONNECTIONS` | `20` | HTTP client pool size |
+| `CACHE_TTL_SHORT` | `300` | Short cache TTL (5 min) |
+| `CACHE_TTL_MEDIUM` | `1800` | Medium cache TTL (30 min) |
+| `CACHE_TTL_LONG` | `86400` | Long cache TTL (24 hours) |
 
 ---
 

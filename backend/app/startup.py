@@ -10,6 +10,11 @@ from app.persistent_cache import persistent_cache
 from app.cache import init_cache
 from app.database import init_database, get_database
 from app.realtime_analytics import realtime_collector
+from app.social_media_manager import social_media_manager
+from app.telegram_bot import telegram_bot
+from app.ai_image_service import ai_image_generator
+from app.idle_task_processor import idle_task_processor, setup_idle_tasks
+from app.news_service import news_fetcher, ai_article_generator
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +43,52 @@ async def initialize_system():
 
         # Warm caches
         await warm_initial_caches(database)
+
+        # Initialize AI Image Generator (if API key available)
+        try:
+            from app.config import settings
+            if hasattr(settings, 'OPENAI_API_KEY') and settings.OPENAI_API_KEY:
+                await ai_image_generator.initialize(settings.OPENAI_API_KEY)
+                logger.info("AI Image Generator initialized")
+        except Exception as e:
+            logger.warning(f"AI Image Generator not initialized: {e}")
+
+        # Initialize Social Media Manager
+        try:
+            await social_media_manager.start_scheduler()
+            logger.info("Social Media Manager started")
+        except Exception as e:
+            logger.warning(f"Social Media Manager error: {e}")
+
+        # Setup and start idle task processor
+        try:
+            await setup_idle_tasks(database)
+            await idle_task_processor.start()
+            logger.info("Idle task processor started")
+        except Exception as e:
+            logger.warning(f"Idle task processor error: {e}")
+
+        # Initialize Telegram Bot (if configured)
+        try:
+            if hasattr(settings, 'TELEGRAM_BOT_TOKEN') and settings.TELEGRAM_BOT_TOKEN:
+                await telegram_bot.initialize(settings.TELEGRAM_BOT_TOKEN)
+                logger.info("Telegram Bot initialized")
+        except Exception as e:
+            logger.warning(f"Telegram Bot not initialized: {e}")
+
+        # Initialize News Services (if configured)
+        try:
+            await news_fetcher.initialize()
+            logger.info("News Fetcher initialized")
+
+            if hasattr(settings, 'OPENAI_API_KEY') and settings.OPENAI_API_KEY:
+                await ai_article_generator.initialize(
+                    settings.OPENAI_API_KEY,
+                    getattr(settings, 'NEWS_AUTHOR_NAME', 'PropertyYards Team')
+                )
+                logger.info("AI Article Generator initialized")
+        except Exception as e:
+            logger.warning(f"News services not initialized: {e}")
 
         logger.info("System initialization completed successfully")
 
@@ -123,6 +174,14 @@ async def shutdown_system():
         # Stop real-time analytics collector
         await realtime_collector.stop()
         logger.info("Real-time analytics collector stopped")
+
+        # Stop idle task processor
+        await idle_task_processor.stop()
+        logger.info("Idle task processor stopped")
+
+        # Stop social media scheduler
+        await social_media_manager.stop_scheduler()
+        logger.info("Social Media Manager stopped")
 
         # Close cache
         from app.cache import close_cache

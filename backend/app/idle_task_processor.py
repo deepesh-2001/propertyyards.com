@@ -382,6 +382,70 @@ class DatabaseOptimizationTask:
             logger.error(f"Database optimization error: {e}")
 
 
+class NewsGenerationTask:
+    """Background task for generating news articles during idle time"""
+
+    def __init__(self, database):
+        self.database = database
+
+    async def execute(self):
+        """Execute news generation"""
+        try:
+            from app.news_service import ai_article_generator, article_manager
+            from app.config import settings
+
+            # Generate articles only if API key is configured
+            if not ai_article_generator.api_key:
+                return
+
+            # Topics for article generation
+            topics = [
+                ("Real Estate Market Trends in India 2024", ArticleCategory.MARKET_TRENDS, ["market", "trends", "india", "2024"]),
+                ("Top Investment Locations in Mumbai", ArticleCategory.INVESTMENT, ["mumbai", "investment", "property"]),
+                ("Smart Home Technology Trends", ArticleCategory.TECHNOLOGY, ["smart home", "technology", "automation"]),
+                ("Luxury Living: What Buyers Want", ArticleCategory.LIFESTYLE, ["luxury", "lifestyle", "buyers"]),
+                ("RERA Guidelines for Home Buyers", ArticleCategory.LEGAL, ["rera", "legal", "guidelines"]),
+            ]
+
+            author_name = getattr(settings, 'NEWS_AUTHOR_NAME', 'PropertyYards Team')
+
+            for topic, category, keywords in topics[:2]:  # Generate max 2 articles per idle cycle
+                try:
+                    # Check if similar article exists recently
+                    existing = await self.database.news_articles.find_one({
+                        "title": {"$regex": topic[:20], "$options": "i"},
+                        "created_at": {"$gte": datetime.utcnow() - timedelta(days=7)}
+                    })
+
+                    if existing:
+                        continue
+
+                    article = await ai_article_generator.generate_article(
+                        topic=topic,
+                        category=category,
+                        keywords=keywords,
+                        tone="professional",
+                        word_count=800
+                    )
+
+                    if article:
+                        article.author = f"{author_name}"
+                        article_id = await article_manager.create_article(article, self.database)
+
+                        if article_id:
+                            logger.info(f"Generated article during idle: {article.title[:50]}...")
+
+                            # Auto-publish if enabled
+                            if getattr(settings, 'AUTO_PUBLISH_NEWS', False):
+                                await article_manager.publish_article(article_id, self.database)
+
+                except Exception as e:
+                    logger.error(f"News generation for topic '{topic}' failed: {e}")
+
+        except Exception as e:
+            logger.error(f"News generation task error: {e}")
+
+
 # Global idle task processor
 idle_task_processor = IdleTaskProcessor()
 
@@ -436,6 +500,17 @@ async def setup_idle_tasks(database):
         db_task.execute,
         TaskPriority.LOW,
         estimated_duration=600
+    )
+
+    # News Article Generation (Idle time)
+    from app.news_service import ArticleCategory
+    news_task = NewsGenerationTask(database)
+    idle_task_processor.register_task(
+        "news_generation",
+        "News Article Generation",
+        news_task.execute,
+        TaskPriority.LOW,
+        estimated_duration=300
     )
 
     logger.info("All idle tasks registered")

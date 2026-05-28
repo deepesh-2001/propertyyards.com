@@ -214,6 +214,27 @@ class Settings(BaseSettings):
     CLOUDINARY_API_SECRET: str = ""
     CLOUDINARY_UPLOAD_FOLDER: str = "housing_platform"
 
+    # OpenAI Configuration (AI Image Generation)
+    OPENAI_API_KEY: str = ""
+    OPENAI_IMAGE_MODEL: str = "dall-e-3"
+
+    # Telegram Bot Configuration
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_WEBHOOK_URL: str = ""
+
+    # Social Media API Keys
+    FACEBOOK_ACCESS_TOKEN: str = ""
+    FACEBOOK_PAGE_ID: str = ""
+    INSTAGRAM_ACCESS_TOKEN: str = ""
+    TWITTER_API_KEY: str = ""
+    TWITTER_API_SECRET: str = ""
+    LINKEDIN_ACCESS_TOKEN: str = ""
+
+    # News Service Configuration
+    NEWS_AUTHOR_NAME: str = "PropertyYards Editorial Team"
+    AUTO_PUBLISH_NEWS: bool = False
+    NEWS_FETCH_INTERVAL_HOURS: int = 6
+
     class Config:
         env_file = ".env"
         case_sensitive = True

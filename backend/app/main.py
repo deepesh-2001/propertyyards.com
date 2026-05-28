@@ -9,13 +9,11 @@ import logging
 import sys
 
 from app.config import settings
-from app.database import init_database, close_database
-from app.cache import init_cache, close_cache
-from app.routers import auth, users, properties, inquiries, admin, crm, referral, access, loan_calculator, contact, notifications, chatbot, brokers, reports, monitoring, recruitment, payments, self_healing, salary, commission, prediction, feedback, credit_card, reimbursement, claims, tax, onboarding, scraper, property_onboarding, feature_flags, whiteboard, analytics, cache_management, properties_cached, realtime
+from app.routers import auth, users, properties, inquiries, admin, crm, referral, access, loan_calculator, contact, notifications, chatbot, brokers, reports, monitoring, recruitment, payments, self_healing, salary, commission, prediction, feedback, credit_card, reimbursement, claims, tax, onboarding, scraper, property_onboarding, feature_flags, whiteboard, analytics, cache_management, properties_cached, realtime, admin_portal, social_media, telegram, news
 from app import health, cron
 from app.access import AccessControl
 from app.security import setup_security_middleware
-from app.startup import initialize_system, shutdown_system
+from app.unified_startup import initialize_application, shutdown_application, get_application_health
 
 # Configure logging
 logging.basicConfig(
@@ -32,13 +30,13 @@ logger = logging.getLogger(__name__)
 # Lifespan context manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Handle app startup and shutdown with full system initialization"""
+    """Handle app startup and shutdown with unified service manager"""
     # Startup
     logger.info("Starting Housing Platform API...")
 
     try:
-        # Initialize full system (database, cache, background tasks, etc.)
-        await initialize_system()
+        # Initialize all services through unified bootstrapper
+        await initialize_application()
 
         # Initialize access control roles
         try:
@@ -65,7 +63,7 @@ async def lifespan(app: FastAPI):
     cron.stop_scheduler()
 
     try:
-        await shutdown_system()
+        await shutdown_application()
     except Exception as e:
         logger.error(f"System shutdown error: {e}")
 
@@ -163,6 +161,10 @@ app.include_router(whiteboard.router)
 app.include_router(analytics.router)
 app.include_router(cache_management.router)
 app.include_router(realtime.router)
+app.include_router(admin_portal.router)
+app.include_router(social_media.router)
+app.include_router(telegram.router)
+app.include_router(news.router)
 app.include_router(health.router)
 
 # Setup security middleware
@@ -186,7 +188,23 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy", "environment": settings.ENVIRONMENT}
+    health = await get_application_health()
+    return health
+
+
+@app.get("/status")
+async def app_status():
+    """Detailed application status"""
+    from app.unified_startup import bootstrapper
+    status = bootstrapper.get_status()
+    return status
+
+
+@app.get("/services")
+async def services_status():
+    """Get all service statuses"""
+    from app.service_manager import service_manager
+    return service_manager.get_all_status()
 
 
 # API Info
