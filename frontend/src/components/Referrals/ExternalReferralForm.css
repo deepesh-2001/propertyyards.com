@@ -1,0 +1,367 @@
+.external-referral-form {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.referral-header-section {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.referral-header-section h1 {
+  font-size: 2.2rem;
+  color: #1e293b;
+  margin: 0 0 10px;
+}
+
+.referral-header-section p {
+  color: #64748b;
+  font-size: 1.1rem;
+}
+
+/* Benefits Banner */
+.benefits-banner {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  margin-bottom: 40px;
+  padding: 25px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  color: white;
+}
+
+.benefit-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.benefit-icon {
+  font-size: 32px;
+  opacity: 0.9;
+}
+
+.benefit-item span {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Form Container */
+.referral-form-container {
+  background: white;
+  border-radius: 16px;
+  padding: 40px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.form-section {
+  margin-bottom: 35px;
+  padding-bottom: 35px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.form-section:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.form-section h3 {
+  margin: 0 0 20px;
+  color: #1e293b;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #475569;
+  font-size: 14px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 15px;
+  transition: all 0.2s;
+  background: #f8fafc;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  background: white;
+}
+
+.form-group select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  padding-right: 40px;
+}
+
+/* Earnings Calculation */
+.earnings-calc {
+  background: #dcfce7;
+  border: 2px solid #86efac;
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.calc-label {
+  font-weight: 500;
+  color: #166534;
+}
+
+.calc-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #16a34a;
+  margin-left: auto;
+}
+
+/* Form Footer */
+.form-footer {
+  margin-top: 40px;
+  text-align: center;
+}
+
+.terms-text {
+  color: #94a3b8;
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+
+.btn-submit-referral {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 40px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-submit-referral:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.btn-submit-referral:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Success State */
+.success-container {
+  text-align: center;
+  padding: 40px;
+}
+
+.success-icon {
+  color: #22c55e;
+  margin-bottom: 20px;
+}
+
+.success-container h2 {
+  font-size: 1.8rem;
+  color: #1e293b;
+  margin: 0 0 15px;
+}
+
+.success-message {
+  color: #64748b;
+  font-size: 1.1rem;
+  margin-bottom: 30px;
+}
+
+.referral-code-box {
+  background: #dbeafe;
+  border: 3px dashed #3b82f6;
+  border-radius: 16px;
+  padding: 30px;
+  margin-bottom: 30px;
+}
+
+.code-label {
+  display: block;
+  font-size: 14px;
+  color: #3b82f6;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.code-value {
+  display: block;
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #1e40af;
+  letter-spacing: 3px;
+  font-family: monospace;
+}
+
+.code-hint {
+  color: #64748b;
+  font-size: 14px;
+  margin-top: 15px;
+}
+
+.earnings-preview {
+  background: #dcfce7;
+  border-radius: 12px;
+  padding: 25px;
+  margin-bottom: 30px;
+}
+
+.earnings-preview h3 {
+  margin: 0 0 10px;
+  color: #166534;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.earnings-amount {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #16a34a;
+  margin-bottom: 5px;
+}
+
+.earnings-preview p {
+  color: #22c55e;
+  margin: 0;
+}
+
+.next-steps {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 25px;
+  margin-bottom: 30px;
+  text-align: left;
+}
+
+.next-steps h3 {
+  margin: 0 0 15px;
+  color: #1e293b;
+  font-size: 16px;
+}
+
+.next-steps ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #475569;
+  line-height: 1.8;
+}
+
+.next-steps li {
+  margin-bottom: 8px;
+}
+
+.btn-submit-another {
+  padding: 14px 30px;
+  background: #f1f5f9;
+  color: #475569;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-submit-another:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+/* Access Denied for non-authorized */
+.access-denied {
+  text-align: center;
+  padding: 80px 20px;
+}
+
+.access-denied h2 {
+  color: #1e293b;
+  margin-bottom: 15px;
+}
+
+.access-denied p {
+  color: #64748b;
+}
+
+@media (max-width: 640px) {
+  .external-referral-form {
+    padding: 20px 15px;
+  }
+
+  .benefits-banner {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .referral-form-container {
+    padding: 25px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .code-value {
+    font-size: 1.8rem;
+  }
+}

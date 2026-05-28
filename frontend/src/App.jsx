@@ -6,6 +6,7 @@ import { PropertyList, PropertySearch } from './components/Properties/Properties
 import { Whiteboard } from './components/Whiteboard/Whiteboard'
 import { Structure3D } from './components/Structure3D/Structure3D'
 import { TestFeatures } from './components/TestFeatures/TestFeatures'
+import { ReferralManagement, AnalyticsDashboard, ExternalReferralForm } from './components/Referrals'
 import './App.css'
 
 function ProtectedRoute({ children, isAuthenticated }) {
@@ -32,6 +33,7 @@ function App() {
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/submit-referral" element={<ExternalReferralForm />} />
 
           {/* Protected Routes */}
           <Route
@@ -71,6 +73,22 @@ function App() {
             element={
               <ProtectedRoute isAuthenticated={isAuthenticated}>
                 <TestFeatures />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/referrals"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <ReferralManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analytics"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <AnalyticsDashboard />
               </ProtectedRoute>
             }
           />
@@ -125,6 +143,12 @@ function Navigation({ user }) {
           </a>
           <a href="/test-features" className="nav-link">
             Test
+          </a>
+          <a href="/referrals" className="nav-link">
+            Referrals
+          </a>
+          <a href="/analytics" className="nav-link">
+            Analytics
           </a>
           {user && (
             <div className="user-info">
