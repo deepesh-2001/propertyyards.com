@@ -59,17 +59,50 @@ Health, Life, Property, Home insurance scraped from web with sales integration
 
 ## Architecture
 
-### Microservices
+### Microservices Architecture 🏗️
 
-**Gateway** (:80) → Routes to services  
-**Auth** (:8001) → JWT, RBAC  
-**Property** (:8002) → Listings, search  
-**User** (:8003) → Profiles, HR  
-**Report** (:8004) → Sales, projections  
-**Analytics** (:8006) → AI predictions
+| Service | Port | Purpose | Deploy URL |
+|---------|------|---------|------------|
+| **API Gateway** | 80/443 | Routing, SSL, Rate Limit | Vercel |
+| **Auth Service** | 8001 | JWT, RBAC, User Auth | Vercel |
+| **Property Service** | 8002 | Listings, Search, CRUD | Vercel |
+| **User Service** | 8003 | Profiles, HR, Preferences | Vercel |
+| **Report Service** | 8004 | Sales, Analytics, Exports | Vercel |
+| **Insurance Service** | 8005 | Insurance scraping, Quotes | Vercel |
+| **AI Service** | 8006 | Image gen, Content, Predictions | Vercel |
+| **Notification Service** | 8007 | Email, SMS, Push | Vercel |
+| **Analytics Service** | 8008 | Metrics, Dashboards | Vercel |
 
-**Database:** MongoDB replica set (Primary + Secondary)  
-**Cache:** Redis | **Queue:** RabbitMQ
+**Infrastructure:**  
+- **Database:** MongoDB Atlas (replica set)  
+- **Cache:** Redis Cloud  
+- **Queue:** CloudAMQP (RabbitMQ)  
+- **CDN:** Vercel Edge Network  
+- **Monitoring:** Built-in health checks
+
+### 🚀 Quick Deploy
+
+```bash
+# 1. Install Vercel CLI
+npm i -g vercel
+
+# 2. Clone repo
+git clone https://github.com/deepesh-2001/propertyyards.com.git
+cd propertyyards.com
+
+# 3. Deploy all services
+vercel --prod  # Deploys frontend + gateway
+# Services auto-deploy via GitHub Actions
+```
+
+See [MICROSERVICES_DEPLOY.md](MICROSERVICES_DEPLOY.md) for detailed deployment guide.
+
+### 🔄 CI/CD Pipeline
+
+- **PR**: Auto preview deployment + tests
+- **Merge**: Auto production deployment
+- **Monitoring**: Health checks every 6 hours
+- **Rollback**: One-click via Vercel dashboard
 
 ### Caching
 - Local (60s) → Redis (5-30min) → MongoDB (1-24hr)
