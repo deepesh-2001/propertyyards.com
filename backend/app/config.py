@@ -39,8 +39,19 @@ class Settings(BaseSettings):
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000
 
-    # CORS
-    CORS_ORIGINS: list = ["https://propertyyards.com", "http://localhost:5173", "http://localhost:3000"]
+    # HTTPS/SSL Configuration
+    FORCE_HTTPS: bool = True  # Force all traffic to HTTPS
+    HTTPS_PORT: int = 443
+    SSL_CERT_PATH: Optional[str] = None  # Path to SSL certificate
+    SSL_KEY_PATH: Optional[str] = None   # Path to SSL private key
+    HSTS_MAX_AGE: int = 31536000  # 1 year in seconds
+    HSTS_INCLUDE_SUBDOMAINS: bool = True
+    HSTS_PRELOAD: bool = True
+    SECURE_COOKIE: bool = True
+    SECURE_HEADERS: bool = True
+
+    # CORS - Updated to HTTPS only for production
+    CORS_ORIGINS: list = ["https://propertyyards.com", "https://www.propertyyards.com", "http://localhost:5173", "http://localhost:3000"]
     CORS_CREDENTIALS: bool = True
     CORS_METHODS: list = ["*"]
     CORS_HEADERS: list = ["*"]

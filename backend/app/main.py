@@ -10,10 +10,11 @@ import logging
 import sys
 
 from app.config import settings
-from app.routers import auth, users, properties, inquiries, admin, crm, referral, access, loan_calculator, contact, notifications, chatbot, brokers, reports, monitoring, recruitment, payments, self_healing, salary, commission, prediction, feedback, credit_card, reimbursement, claims, tax, onboarding, scraper, property_onboarding, feature_flags, whiteboard, analytics, cache_management, properties_cached, realtime, admin_portal, social_media, telegram, news, operations, architecture, ai_costs, ai_seo, comparison, insurance
+from app.routers import auth, users, properties, inquiries, admin, crm, referral, access, loan_calculator, contact, notifications, chatbot, brokers, reports, monitoring, recruitment, payments, self_healing, salary, commission, prediction, feedback, credit_card, reimbursement, claims, tax, onboarding, scraper, property_onboarding, feature_flags, whiteboard, analytics, cache_management, properties_cached, realtime, admin_portal, social_media, telegram, news, operations, architecture, ai_costs, ai_seo, comparison, cashback, insurance
 from app import health, cron
 from app.access import AccessControl
 from app.security import setup_security_middleware
+from app.https_middleware import enforce_https
 from app.unified_startup import initialize_application, shutdown_application, get_application_health
 
 # Configure logging
@@ -172,10 +173,14 @@ app.include_router(ai_costs.router)
 app.include_router(insurance.router)
 app.include_router(ai_seo.router)
 app.include_router(comparison.router)
+app.include_router(cashback.router)
 app.include_router(health.router)
 
 # Setup security middleware
 setup_security_middleware(app)
+
+# Setup HTTPS enforcement (redirect HTTP to HTTPS)
+enforce_https(app)
 
 
 # Root endpoint
