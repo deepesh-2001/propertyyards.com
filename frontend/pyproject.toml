@@ -1,0 +1,7 @@
+[tool.vercel]
+# Disable Python detection for frontend-only deployment
+framework = "none"
+
+[build-system]
+requires = []
+build-backend = ""
