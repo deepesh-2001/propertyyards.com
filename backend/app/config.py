@@ -214,7 +214,14 @@ class Settings(BaseSettings):
     CLOUDINARY_API_SECRET: str = ""
     CLOUDINARY_UPLOAD_FOLDER: str = "housing_platform"
 
-    # OpenAI Configuration (AI Image Generation)
+    # Google Gemini Configuration (AI Image & Article Generation)
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-pro"
+    GEMINI_VISION_MODEL: str = "gemini-pro-vision"
+    IMAGEN_MODEL: str = "imagen-3.0-generate-002"
+    USE_IMAGEN_FOR_IMAGES: bool = True
+
+    # Legacy OpenAI (kept for backward compatibility)
     OPENAI_API_KEY: str = ""
     OPENAI_IMAGE_MODEL: str = "dall-e-3"
 
@@ -234,6 +241,27 @@ class Settings(BaseSettings):
     NEWS_AUTHOR_NAME: str = "PropertyYards Editorial Team"
     AUTO_PUBLISH_NEWS: bool = False
     NEWS_FETCH_INTERVAL_HOURS: int = 6
+
+    # Global Configuration
+    DEFAULT_LOCALE: str = "en"
+    DEFAULT_CURRENCY: str = "USD"
+    DEFAULT_TIMEZONE: str = "UTC"
+    DEFAULT_REGION: str = "na"  # North America
+
+    # Currency Exchange API
+    EXCHANGE_RATE_API_KEY: str = ""
+    EXCHANGE_RATE_UPDATE_INTERVAL: int = 3600  # 1 hour
+
+    # GDPR/Privacy
+    GDPR_ENABLED: bool = True
+    DATA_RETENTION_DAYS: int = 365
+    CONSENT_EXPIRY_DAYS: int = 365
+
+    # Global Features
+    ENABLE_MULTI_LANGUAGE: bool = True
+    ENABLE_MULTI_CURRENCY: bool = True
+    ENABLE_TIMEZONE_SUPPORT: bool = True
+    ENABLE_REGION_LOCALIZATION: bool = True
 
     class Config:
         env_file = ".env"

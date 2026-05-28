@@ -130,18 +130,18 @@ class NewsFetcher:
 
 
 class AIArticleGenerator:
-    """Generates AI-powered real estate articles"""
+    """Generates AI-powered real estate articles using Google Gemini"""
 
     def __init__(self):
         self.api_key = None
-        self.api_endpoint = "https://api.openai.com/v1/chat/completions"
+        self.api_endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
         self.author_name = "PropertyYards Editorial Team"
 
     async def initialize(self, api_key: str, author_name: str = "PropertyYards Team"):
         """Initialize with API key and author name"""
         self.api_key = api_key
         self.author_name = author_name
-        logger.info("AI Article Generator initialized")
+        logger.info("AI Article Generator initialized with Gemini")
 
     async def generate_article(
         self,
@@ -151,7 +151,7 @@ class AIArticleGenerator:
         tone: str = "professional",
         word_count: int = 800
     ) -> Optional[NewsArticle]:
-        """Generate AI article on real estate topic"""
+        """Generate AI article on real estate topic using Google Gemini"""
         if not self.api_key:
             logger.warning("No API key for AI article generation")
             return None
@@ -160,55 +160,68 @@ class AIArticleGenerator:
             prompt = self._build_generation_prompt(topic, category, keywords, tone, word_count)
 
             async with aiohttp.ClientSession() as session:
-                headers = {
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                }
+                url = f"{self.api_endpoint}?key={self.api_key}"
 
+                # Gemini API format
                 payload = {
-                    "model": "gpt-4",
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "You are a professional real estate content writer for PropertyYards, India's leading property platform."
-                        },
+                    "contents": [
                         {
                             "role": "user",
-                            "content": prompt
+                            "parts": [
+                                {
+                                    "text": f"You are a professional real estate content writer for PropertyYards, India's leading property platform.\n\n{prompt}"
+                                }
+                            ]
                         }
                     ],
-                    "temperature": 0.7,
-                    "max_tokens": 2000
+                    "generationConfig": {
+                        "temperature": 0.7,
+                        "topP": 0.8,
+                        "topK": 40,
+                        "maxOutputTokens": 2048
+                    }
                 }
 
                 async with session.post(
-                    self.api_endpoint,
-                    headers=headers,
+                    url,
                     json=payload,
                     timeout=aiohttp.ClientTimeout(total=60)
                 ) as response:
                     if response.status == 200:
                         data = await response.json()
-                        generated_text = data['choices'][0]['message']['content']
 
-                        # Parse generated content
-                        article_data = self._parse_generated_content(generated_text, topic, category)
+                        # Parse Gemini response format
+                        if "candidates" in data and len(data["candidates"]) > 0:
+                            candidate = data["candidates"][0]
+                            if "content" in candidate and "parts" in candidate["content"]:
+                                generated_text = candidate["content"]["parts"][0].get("text", "")
 
-                        return NewsArticle(
-                            id=f"article_{datetime.utcnow().timestamp()}",
-                            title=article_data['title'],
-                            content=article_data['content'],
-                            summary=article_data['summary'],
-                            author=self.author_name,
-                            category=category,
-                            status=ArticleStatus.DRAFT,
-                            tags=keywords,
-                            seo_meta=article_data.get('seo_meta', {}),
-                            is_ai_generated=True
-                        )
+                                # Parse generated content
+                                article_data = self._parse_generated_content(generated_text, topic, category)
+
+                                return NewsArticle(
+                                    id=f"article_{datetime.utcnow().timestamp()}",
+                                    title=article_data['title'],
+                                    content=article_data['content'],
+                                    summary=article_data['summary'],
+                                    author=self.author_name,
+                                    category=category,
+                                    status=ArticleStatus.DRAFT,
+                                    tags=keywords,
+                                    seo_meta=article_data.get('seo_meta', {}),
+                                    is_ai_generated=True
+                                )
+
+                        logger.error(f"Unexpected Gemini response format: {data}")
+                        return None
+
+                    elif response.status == 429:
+                        logger.warning("Gemini rate limit hit, waiting...")
+                        await asyncio.sleep(5)
+                        return await self.generate_article(topic, category, keywords, tone, word_count)
                     else:
                         error_text = await response.text()
-                        logger.error(f"Article generation failed: {error_text}")
+                        logger.error(f"Article generation failed: {response.status} - {error_text}")
                         return None
 
         except Exception as e:

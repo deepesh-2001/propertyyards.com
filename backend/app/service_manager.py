@@ -63,6 +63,9 @@ class ServiceManager:
                 ("social_media", self._init_social_media, ["settings"]),
                 ("telegram_bot", self._init_telegram_bot, ["settings"]),
                 ("news_service", self._init_news_service, ["settings", "ai_image_service"]),
+                ("usage_tracker", self._init_usage_tracker, []),
+                ("auto_scaler", self._init_auto_scaler, []),
+                ("auto_healing", self._init_auto_healing, []),
                 ("idle_processor", self._init_idle_processor, ["all"]),
             ]
 
@@ -240,6 +243,72 @@ class ServiceManager:
         await idle_task_processor.start()
 
         return idle_task_processor
+
+    async def _init_i18n(self, database, settings):
+        """Initialize internationalization"""
+        from app.i18n_manager import i18n
+
+        default_locale = getattr(settings, 'DEFAULT_LOCALE', 'en')
+        i18n.set_locale(default_locale)
+
+        return i18n
+
+    async def _init_currency(self, database, settings):
+        """Initialize currency manager"""
+        from app.currency_manager import currency_manager
+
+        api_key = getattr(settings, 'EXCHANGE_RATE_API_KEY', None)
+        if api_key:
+            currency_manager.set_api_key(api_key)
+            await currency_manager.update_exchange_rates()
+
+        return currency_manager
+
+    async def _init_timezone(self, database, settings):
+        """Initialize timezone manager"""
+        from app.timezone_manager import timezone_manager
+
+        default_tz = getattr(settings, 'DEFAULT_TIMEZONE', 'UTC')
+        timezone_manager.default_timezone = default_tz
+
+        return timezone_manager
+
+    async def _init_phone_validator(self, database, settings):
+        """Initialize phone validator"""
+        from app.phone_validator import phone_validator
+        return phone_validator
+
+    async def _init_gdpr(self, database, settings):
+        """Initialize GDPR manager"""
+        from app.gdpr_manager import gdpr_manager
+        return gdpr_manager
+
+    async def _init_region(self, database, settings):
+        """Initialize region manager"""
+        from app.region_manager import region_manager
+
+        default_region = getattr(settings, 'DEFAULT_REGION', 'na')
+        # Note: region is set per-user, this just initializes the manager
+
+        return region_manager
+
+    async def _init_usage_tracker(self, database, settings):
+        """Initialize usage tracker"""
+        from app.usage_tracker import usage_tracker
+        await usage_tracker.start()
+        return usage_tracker
+
+    async def _init_auto_scaler(self, database, settings):
+        """Initialize auto-scaler"""
+        from app.auto_scaler import auto_scaler
+        await auto_scaler.start()
+        return auto_scaler
+
+    async def _init_auto_healing(self, database, settings):
+        """Initialize auto-healing service"""
+        from app.auto_healing import auto_healing
+        await auto_healing.start()
+        return auto_healing
 
     def get_service(self, name: str) -> Optional[Any]:
         """Get a service by name"""
