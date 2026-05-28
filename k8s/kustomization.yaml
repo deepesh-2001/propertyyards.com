@@ -26,9 +26,3 @@ configMapGenerator:
       - ENVIRONMENT=production
       - API_VERSION=1.0.0
 
-secretGenerator:
-  - name: app-secrets
-    type: Opaque
-    literals:
-      - mongodb-url=mongodb://mongodb:27017/propertyyards
-      - redis-url=redis://redis:6379/0
