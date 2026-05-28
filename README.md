@@ -35,6 +35,13 @@
 - **AI Prediction** — Price prediction & demand forecasting
 - **CRM** — Lead tracking, follow-up, and deal pipeline
 
+### Sales & Investment Analytics
+- **Sales Records** — Track property sales, commissions, broker performance, payment methods
+- **Projections & Forecasts** — AI-powered market projections with confidence scoring
+- **Future Growth Analysis** — Location-based growth projections, demand/supply indices
+- **Future Projects Pipeline** — Track upcoming developments, pre-launch projects, completion dates
+- **Investment Opportunities** — ROI analysis, risk assessment, funding tracking, investment deals
+
 ### User & Access
 - **Authentication** — JWT (access + refresh tokens), OTP phone verification
 - **RBAC** — buyer · seller · agent · broker · admin · HR · finance roles
@@ -69,55 +76,53 @@
 
 ## Architecture
 
-### Monolithic Service Architecture
+### Microservices Architecture
 
-PropertyYards uses a **centralized monolithic architecture** with a `ServiceManager` that handles all service lifecycle, dependencies, and health monitoring.
+PropertyYards uses a **microservices architecture** with an API Gateway routing requests to specialized services. MongoDB runs as a replica set for high availability.
 
 ```
-housing_platform/
-├── backend/
-│   ├── app/
-│   │   ├── main.py                  # FastAPI entry, unified startup
-│   │   ├── unified_startup.py       # Centralized bootstrapper
-│   │   ├── service_manager.py       # Monolithic service container
-│   │   ├── database.py              # MongoDB with replica set
-│   │   ├── cache.py                 # Redis cache layer
-│   │   ├── cache_pipeline.py        # Redis pipeline ops
-│   │   ├── persistent_cache.py      # MongoDB persistent cache
-│   │   ├── db_optimized.py          # Query optimization
-│   │   ├── auth.py                  # JWT + RBAC
-│   │   ├── security.py              # Security middleware
-│   │   ├── realtime_analytics.py    # Minute-by-minute analytics
-│   │   ├── predictive_analytics.py  # AI forecasting
-│   │   ├── ai_image_service.py      # DALL-E image generation
-│   │   ├── news_service.py          # AI article generation
-│   │   ├── telegram_bot.py          # Telegram bot
-│   │   ├── social_media_manager.py  # Social automation
-│   │   ├── idle_task_processor.py   # Idle-time processing
-│   │   ├── background_tasks.py      # Background workers
-│   │   ├── timeseries.py            # Time-series storage
-│   │   ├── websocket_manager.py     # WebSocket connections
-│   │   ├── cache_decorators.py      # Cache decorators
-│   │   ├── routers/
-│   │   │   ├── auth.py
-│   │   │   ├── users.py
-│   │   │   ├── properties.py
-│   │   │   ├── properties_cached.py # Cached property routes
-│   │   │   ├── inquiries.py
-│   │   │   ├── analytics.py
-│   │   │   ├── whiteboard.py        # Collaborative whiteboard
-│   │   │   ├── admin_portal.py      # Admin dashboard
-│   │   │   ├── realtime.py          # Real-time endpoints
-│   │   │   ├── cache_management.py  # Cache API
-│   │   │   ├── social_media.py      # Social media API
-│   │   │   ├── telegram.py          # Telegram webhooks
-│   │   │   ├── news.py              # News/Articles API
-│   │   │   └── [existing routers...]
-│   └── tests/
-├── frontend/                        # React + Vite
-├── docker-compose.yml               # MongoDB replica set + Redis
-└── README.md
+┌─────────────────────────────────────────────────────────────────────┐
+│                         API Gateway (Nginx)                            │
+│                    Routes: /api/auth → auth-service                    │
+│                           /api/properties → property-service           │
+│                           /api/reports → report-service                │
+└─────────────────────────────────────────────────────────────────────┘
+                                    │
+        ┌───────────────┬───────────┼───────────┬───────────────┐
+        ▼               ▼           ▼           ▼               ▼
+┌──────────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐
+│ Auth Service │ │ Property │ │  User    │ │  Report  │ │ Notification │
+│   (:8001)    │ │ Service  │ │ Service  │ │ Service  │ │   Service    │
+│              ││  (:8002) │ │ (:8003)  │ │ (:8004)  │ │   (:8005)    │
+│ JWT + RBAC   │ │ Listings │ │ Profiles │ │ Analytics│ │ Email/SMS    │
+└──────────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────────┘
+                                                        ┌──────────────┐
+                                                        │  Analytics   │
+                                                        │   Service    │
+                                                        │   (:8006)    │
+                                                        │ AI/Forecast  │
+                                                        └──────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Shared Infrastructure Layer                         │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  │
+│  │MongoDB      │  │MongoDB      │  │   Redis     │  │  RabbitMQ   │  │
+│  │Primary      │  │Secondary  │  │   Cache     │  │   Message   │  │
+│  │(:27017)     │  │(:27018)    │  │  (:6379)    │  │  (:5672)    │  │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
 ```
+
+### Service Responsibilities
+
+| Service | Port | Responsibility |
+|---------|------|----------------|
+| `api-gateway` | 80/443 | Routes requests, load balancing, SSL termination |
+| `auth-service` | 8001 | JWT authentication, RBAC, user sessions |
+| `property-service` | 8002 | Property CRUD, search, wishlist, inquiries |
+| `user-service` | 8003 | User profiles, HR data, preferences |
+| `report-service` | 8004 | Sales, projections, growth, projects, investment reports |
+| `notification-service` | 8005 | Email, SMS, WhatsApp, push notifications |
+| `analytics-service` | 8006 | AI predictions, market analysis, forecasting |
 
 ### Service Manager Architecture
 
@@ -180,7 +185,6 @@ housing_platform/
 | AI Image Service | `app/ai_image_service.py` | DALL-E image generation |
 | News Service | `app/news_service.py` | AI article generation from templates |
 | Telegram Bot | `app/telegram_bot.py` | Telegram bot for notifications |
-| Social Media | `app/social_media_manager.py` | Automated social posting |
 | Idle Processor | `app/idle_task_processor.py` | Idle-time background tasks |
 | Cache Pipeline | `app/cache_pipeline.py` | Redis pipeline operations |
 | Persistent Cache | `app/persistent_cache.py` | MongoDB cache storage |
@@ -192,6 +196,13 @@ housing_platform/
 | Fraud Detection | `app/routers/fraud_detection.py` | Anomaly scoring on transactions |
 | Prediction | `app/routers/prediction.py` | AI price prediction |
 | Self-Healing | `app/routers/self_healing.py` | Service health recovery |
+| **Sales Records** | `app/models.py` | Property sales tracking, commissions |
+| **Projections** | `app/models.py` | Market forecasts, confidence scoring |
+| **Future Growth** | `app/models.py` | Location growth analysis, demand/supply |
+| **Future Projects** | `app/models.py` | Upcoming developments, pre-launch |
+| **Investment Opp.** | `app/models.py` | ROI analysis, risk assessment |
+| **Report Generator** | `app/report_generator.py` | CSV/PDF/JSON report generation |
+| **Reports Router** | `app/routers/reports.py` | Sales, projections, investment APIs |
 
 ---
 
@@ -291,6 +302,19 @@ housing_platform/
 | POST | `/api/referral/rewards/{id}/claim` | Claim reward |
 | GET | `/api/referral/stats` | Referral stats |
 
+### Sales & Investment Reports
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/reports/sales` | Sales records report (CSV/PDF/JSON) |
+| GET | `/api/reports/projections` | Market projections & forecasts |
+| GET | `/api/reports/future-growth` | Location growth analysis |
+| GET | `/api/reports/future-projects` | Upcoming projects pipeline |
+| GET | `/api/reports/investments` | Investment opportunities report |
+| POST | `/api/reports/ai-projection` | Generate AI market projection |
+| POST | `/api/reports/stakeholder/generate` | Generate stakeholder report |
+| GET | `/api/reports/stakeholder/list` | List generated reports |
+| GET | `/api/reports/stakeholder/report-types` | Available report types |
+
 ### Realtime & WebSocket
 | Method | Path | Description |
 |--------|------|-------------|
@@ -379,13 +403,32 @@ echo "VITE_API_URL=http://localhost:8000" > .env
 npm run dev
 ```
 
-### Docker (Recommended)
+### Docker Microservices (Recommended)
 
 ```bash
+# Start all microservices and infrastructure
 docker-compose up -d
+
+# Scale specific services
+docker-compose up -d --scale property-service=3 --scale report-service=2
 ```
 
-Starts: FastAPI `:8000` · React `:3000` · MongoDB `:27017` · Redis `:6379`
+**Services Started:**
+
+| Service | Port | Description |
+|---------|------|-------------|
+| API Gateway | `:80` / `:443` | Nginx reverse proxy, SSL termination |
+| Auth Service | `:8001` | JWT authentication, RBAC |
+| Property Service | `:8002` | Property listings, search |
+| User Service | `:8003` | User profiles, HR data |
+| Report Service | `:8004` | Sales, projections, investments |
+| Notification Service | `:8005` | Email, SMS, WhatsApp |
+| Analytics Service | `:8006` | AI predictions, forecasting |
+| Frontend | `:5173` | React development server |
+| MongoDB Primary | `:27017` | Main write database |
+| MongoDB Secondary | `:27018` | Read replica |
+| Redis | `:6379` | Caching & sessions |
+| RabbitMQ | `:5672` / `:15672` | Message broker (admin UI)
 
 ### Interactive Docs
 
@@ -445,6 +488,21 @@ Starts: FastAPI `:8000` · React `:3000` · MongoDB `:27017` · Redis `:6379`
 | `CACHE_TTL_MEDIUM` | `1800` | Medium cache TTL (30 min) |
 | `CACHE_TTL_LONG` | `86400` | Long cache TTL (24 hours) |
 
+### Microservices Configuration
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SERVICE_NAME` | — | Service identifier (auth-service, property-service, etc.) |
+| `RABBITMQ_URL` | — | RabbitMQ connection string |
+| `RABBITMQ_USER` | `admin` | RabbitMQ username |
+| `RABBITMQ_PASSWORD` | — | RabbitMQ password |
+| `READ_REPLICA_URL` | — | MongoDB read replica URI |
+
+### MongoDB Replica Set
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MONGO_ROOT_PASSWORD` | — | MongoDB admin password |
+| `MONGO_REPLICA_SET_NAME` | `rs0` | Replica set name |
+
 ---
 
 ## Running Tests
@@ -493,10 +551,25 @@ Test coverage areas:
 | Analytics | 15 min |
 
 ### Scaling
-- **Horizontal** — Stateless API, add replicas behind Nginx
+- **Microservices** — Independently scalable services (auth, property, report, etc.)
+- **Horizontal** — Stateless API, add replicas behind API Gateway
 - **Read replicas** — MongoDB secondary for analytics queries
 - **Connection pooling** — Motor configurable `maxPoolSize`
 - **Async everywhere** — `async/await` throughout, no blocking I/O
+- **Message Queue** — RabbitMQ for async task processing
+- **Service Discovery** — Docker Compose service networking
+
+### Microservices Scaling
+```bash
+# Scale property service to handle high traffic
+docker-compose up -d --scale property-service=5
+
+# Scale report service for batch processing
+docker-compose up -d --scale report-service=3
+
+# View service logs
+docker-compose logs -f report-service
+```
 
 ---
 

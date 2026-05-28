@@ -1,5 +1,9 @@
 services:
-  # MongoDB Primary
+  # ==========================================
+  # INFRASTRUCTURE LAYER
+  # ==========================================
+
+  # MongoDB Primary - Main write node
   mongodb_primary:
     image: mongo:7
     container_name: housing_mongodb_primary
@@ -12,7 +16,8 @@ services:
     volumes:
       - mongodb_primary_data:/data/db
       - mongodb_config:/data/configdb
-    command: mongod --replSet rs0 --bind_ip_all
+      - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    command: mongod --replSet rs0 --bind_ip_all --auth
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -21,8 +26,9 @@ services:
       start_period: 10s
     networks:
       - housing_network
+    restart: unless-stopped
 
-  # MongoDB Secondary (Read Replica)
+  # MongoDB Secondary - Read replica for scaling reads
   mongodb_secondary:
     image: mongo:7
     container_name: housing_mongodb_secondary
@@ -33,7 +39,7 @@ services:
       - "27018:27017"
     volumes:
       - mongodb_secondary_data:/data/db
-    command: mongod --replSet rs0 --bind_ip_all
+    command: mongod --replSet rs0 --bind_ip_all --auth
     depends_on:
       - mongodb_primary
     healthcheck:
@@ -44,8 +50,9 @@ services:
       start_period: 10s
     networks:
       - housing_network
+    restart: unless-stopped
 
-  # MongoDB Arbiter
+  # MongoDB Arbiter - Voting member (no data)
   mongodb_arbiter:
     image: mongo:7
     container_name: housing_mongodb_arbiter
@@ -57,14 +64,17 @@ services:
       - mongodb_primary
     networks:
       - housing_network
+    restart: unless-stopped
 
-  # Redis Cache
+  # Redis Cluster - Caching & Session Store
   redis:
     image: redis:7-alpine
     container_name: housing_redis
     ports:
       - "6379:6379"
-    command: redis-server --requirepass ${REDIS_PASSWORD:-change_me_in_production}
+    command: redis-server --requirepass ${REDIS_PASSWORD:-change_me_in_production} --appendonly yes
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-change_me_in_production}", "ping"]
       interval: 10s
@@ -73,32 +83,75 @@ services:
       start_period: 10s
     networks:
       - housing_network
+    restart: unless-stopped
 
-  # FastAPI Backend
-  backend:
+  # RabbitMQ - Message Broker for async communication
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: housing_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-change_me_in_production}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - housing_network
+    restart: unless-stopped
+
+  # ==========================================
+  # MICROSERVICES LAYER
+  # ==========================================
+
+  # API Gateway - Routes requests to appropriate services
+  api-gateway:
+    image: nginx:alpine
+    container_name: housing_api_gateway
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/gateway.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - auth-service
+      - property-service
+      - user-service
+      - report-service
+      - notification-service
+      - analytics-service
+    networks:
+      - housing_network
+    restart: unless-stopped
+
+  # Auth Service - JWT, RBAC, User Authentication
+  auth-service:
     build:
       context: ./backend
-      dockerfile: Dockerfile
-    container_name: housing_backend
+      dockerfile: services/auth/Dockerfile
+    container_name: housing_auth_service
     environment:
+      SERVICE_NAME: auth-service
       DATABASE_URL: mongodb://admin:${MONGO_ROOT_PASSWORD:-change_me_in_production}@mongodb_primary:27017/housing_db?replicaSet=rs0&w=majority
-      READ_REPLICA_URL: mongodb://admin:${MONGO_ROOT_PASSWORD:-change_me_in_production}@mongodb_secondary:27017/housing_db?replicaSet=rs0&readPreference=secondaryPreferred
       REDIS_URL: redis://:${REDIS_PASSWORD:-change_me_in_production}@redis:6379
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-super-secret-key-change-in-production}
-      ENVIRONMENT: production
-      DEBUG: "false"
-      MAX_DB_CONNECTIONS: "100"
-      MIN_DB_CONNECTIONS: "10"
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-change_me_in_production}@rabbitmq:5672/
     ports:
-      - "8000:8000"
+      - "8001:8000"
     depends_on:
       mongodb_primary:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
-      - backend_logs:/app/logs
+      rabbitmq:
+        condition: service_healthy
     networks:
       - housing_network
     healthcheck:
@@ -108,6 +161,189 @@ services:
       start_period: 20s
       retries: 3
     restart: unless-stopped
+    deploy:
+      replicas: 2
+
+  # Property Service - Property listings, search, CRUD
+  property-service:
+    build:
+      context: ./backend
+      dockerfile: services/property/Dockerfile
+    container_name: housing_property_service
+    environment:
+      SERVICE_NAME: property-service
+      DATABASE_URL: mongodb://admin:${MONGO_ROOT_PASSWORD:-change_me_in_production}@mongodb_primary:27017/housing_db?replicaSet=rs0&w=majority
+      READ_REPLICA_URL: mongodb://admin:${MONGO_ROOT_PASSWORD:-change_me_in_production}@mongodb_secondary:27017/housing_db?replicaSet=rs0&readPreference=secondaryPreferred
+      REDIS_URL: redis://:${REDIS_PASSWORD:-change_me_in_production}@redis:6379
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-super-secret-key-change-in-production}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-change_me_in_production}@rabbitmq:5672/
+    ports:
+      - "8002:8000"
+    depends_on:
+      mongodb_primary:
+        condition: service_healthy
+      mongodb_secondary:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    networks:
+      - housing_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      replicas: 3
+
+  # User Service - User profiles, preferences, HR data
+  user-service:
+    build:
+      context: ./backend
+      dockerfile: services/user/Dockerfile
+    container_name: housing_user_service
+    environment:
+      SERVICE_NAME: user-service
+      DATABASE_URL: mongodb://admin:${MONGO_ROOT_PASSWORD:-change_me_in_production}@mongodb_primary:27017/housing_db?replicaSet=rs0&w=majority
+      REDIS_URL: redis://:${REDIS_PASSWORD:-change_me_in_production}@redis:6379
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-super-secret-key-change-in-production}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-change_me_in_production}@rabbitmq:5672/
+    ports:
+      - "8003:8000"
+    depends_on:
+      mongodb_primary:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    networks:
+      - housing_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+
+  # Report Service - Sales, Projections, Growth, Projects, Investments
+  report-service:
+    build:
+      context: ./backend
+      dockerfile: services/report/Dockerfile
+    container_name: housing_report_service
+    environment:
+      SERVICE_NAME: report-service
+      DATABASE_URL: mongodb://admin:${MONGO_ROOT_PASSWORD:-change_me_in_production}@mongodb_primary:27017/housing_db?replicaSet=rs0&w=majority
+      READ_REPLICA_URL: mongodb://admin:${MONGO_ROOT_PASSWORD:-change_me_in_production}@mongodb_secondary:27017/housing_db?replicaSet=rs0&readPreference=secondaryPreferred
+      REDIS_URL: redis://:${REDIS_PASSWORD:-change_me_in_production}@redis:6379
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-super-secret-key-change-in-production}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-change_me_in_production}@rabbitmq:5672/
+    ports:
+      - "8004:8000"
+    depends_on:
+      mongodb_primary:
+        condition: service_healthy
+      mongodb_secondary:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    networks:
+      - housing_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+
+  # Notification Service - Email, SMS, WhatsApp, Push
+  notification-service:
+    build:
+      context: ./backend
+      dockerfile: services/notification/Dockerfile
+    container_name: housing_notification_service
+    environment:
+      SERVICE_NAME: notification-service
+      DATABASE_URL: mongodb://admin:${MONGO_ROOT_PASSWORD:-change_me_in_production}@mongodb_primary:27017/housing_db?replicaSet=rs0&w=majority
+      REDIS_URL: redis://:${REDIS_PASSWORD:-change_me_in_production}@redis:6379
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-super-secret-key-change-in-production}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-change_me_in_production}@rabbitmq:5672/
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+    ports:
+      - "8005:8000"
+    depends_on:
+      mongodb_primary:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - housing_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+
+  # Analytics & AI Service - Predictions, AI projections, Market analysis
+  analytics-service:
+    build:
+      context: ./backend
+      dockerfile: services/analytics/Dockerfile
+    container_name: housing_analytics_service
+    environment:
+      SERVICE_NAME: analytics-service
+      DATABASE_URL: mongodb://admin:${MONGO_ROOT_PASSWORD:-change_me_in_production}@mongodb_primary:27017/housing_db?replicaSet=rs0&w=majority
+      READ_REPLICA_URL: mongodb://admin:${MONGO_ROOT_PASSWORD:-change_me_in_production}@mongodb_secondary:27017/housing_db?replicaSet=rs0&readPreference=secondaryPreferred
+      REDIS_URL: redis://:${REDIS_PASSWORD:-change_me_in_production}@redis:6379
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-super-secret-key-change-in-production}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-change_me_in_production}@rabbitmq:5672/
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    ports:
+      - "8006:8000"
+    depends_on:
+      mongodb_primary:
+        condition: service_healthy
+      mongodb_secondary:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - housing_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+
+  # ==========================================
+  # CLIENT LAYER
+  # ==========================================
 
   # React Frontend
   frontend:
@@ -116,34 +352,15 @@ services:
       dockerfile: Dockerfile
     container_name: housing_frontend
     environment:
-      VITE_API_URL: ${API_URL:-http://localhost:8000}
+      VITE_API_URL: ${API_URL:-http://localhost}
     ports:
       - "5173:5173"
     depends_on:
-      backend:
-        condition: service_healthy
+      - api-gateway
     volumes:
       - ./frontend:/app
       - /app/node_modules
     command: npm run dev
-    networks:
-      - housing_network
-
-  # Nginx Reverse Proxy
-  nginx:
-    image: nginx:alpine
-    container_name: housing_nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-    depends_on:
-      backend:
-        condition: service_healthy
-      frontend:
-        condition: service_started
     networks:
       - housing_network
     restart: unless-stopped
@@ -152,8 +369,12 @@ volumes:
   mongodb_primary_data:
   mongodb_secondary_data:
   mongodb_config:
-  backend_logs:
+  redis_data:
+  rabbitmq_data:
 
 networks:
   housing_network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
