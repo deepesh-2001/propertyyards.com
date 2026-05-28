@@ -187,6 +187,66 @@ async def create_indexes():
         await database.analytics_history.create_index([("type", 1), ("date", -1)])
         await database.analytics_history.create_index([("date", -1)])
 
+        # Sales records collection indexes
+        await database.sales_records.create_index([("property_id", 1)])
+        await database.sales_records.create_index([("seller_id", 1)])
+        await database.sales_records.create_index([("buyer_id", 1)])
+        await database.sales_records.create_index([("broker_id", 1)])
+        await database.sales_records.create_index([("sale_date", -1)])
+        await database.sales_records.create_index([("sale_type", 1)])
+        await database.sales_records.create_index([("status", 1)])
+        await database.sales_records.create_index([("sale_date", -1), ("status", 1)])
+
+        # Projections collection indexes
+        await database.projections.create_index([("projection_type", 1)])
+        await database.projections.create_index([("location_filter", 1)])
+        await database.projections.create_index([("property_type_filter", 1)])
+        await database.projections.create_index([("created_by", 1)])
+        await database.projections.create_index([("created_at", -1)])
+        await database.projections.create_index([("period_start", 1), ("period_end", 1)])
+        await database.projections.create_index([("confidence_level", -1)])
+
+        # Future growth collection indexes
+        await database.future_growth.create_index([("location", 1)])
+        await database.future_growth.create_index([("time_horizon_years", 1)])
+        await database.future_growth.create_index([("growth_rate_projected", -1)])
+        await database.future_growth.create_index([("ai_confidence_score", -1)])
+        await database.future_growth.create_index([("created_at", -1)])
+        await database.future_growth.create_index([("location", 1), ("time_horizon_years", 1)])
+
+        # Future projects collection indexes
+        await database.future_projects.create_index([("city", 1)])
+        await database.future_projects.create_index([("state", 1)])
+        await database.future_projects.create_index([("project_type", 1)])
+        await database.future_projects.create_index([("construction_status", 1)])
+        await database.future_projects.create_index([("developer_name", 1)])
+        await database.future_projects.create_index([("launch_date", 1)])
+        await database.future_projects.create_index([("completion_date", 1)])
+        await database.future_projects.create_index([("is_verified", 1)])
+        await database.future_projects.create_index([("is_featured", 1)])
+        await database.future_projects.create_index([("city", 1), ("construction_status", 1)])
+        await database.future_projects.create_index([("price_range_min", 1), ("price_range_max", 1)])
+
+        # Investment opportunities collection indexes
+        await database.investment_opportunities.create_index([("investment_type", 1)])
+        await database.investment_opportunities.create_index([("location", 1)])
+        await database.investment_opportunities.create_index([("city", 1)])
+        await database.investment_opportunities.create_index([("state", 1)])
+        await database.investment_opportunities.create_index([("risk_level", 1)])
+        await database.investment_opportunities.create_index([("status", 1)])
+        await database.investment_opportunities.create_index([("created_by", 1)])
+        await database.investment_opportunities.create_index([("expected_roi_annual", -1)])
+        await database.investment_opportunities.create_index([("minimum_investment", 1)])
+        await database.investment_opportunities.create_index([("closing_date", 1)])
+        await database.investment_opportunities.create_index([("status", 1), ("risk_level", 1)])
+        await database.investment_opportunities.create_index([("location", 1), ("investment_type", 1)])
+
+        # Stakeholder reports collection indexes
+        await database.stakeholder_reports.create_index([("report_id", 1)], unique=True)
+        await database.stakeholder_reports.create_index([("generated_by", 1)])
+        await database.stakeholder_reports.create_index([("report_type", 1)])
+        await database.stakeholder_reports.create_index([("created_at", -1)])
+
         logger.info("Database indexes created successfully")
         
     except Exception as e:
