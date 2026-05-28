@@ -84,6 +84,7 @@ Health, Life, Property, Home insurance scraped from web with sales integration
 | **Notification Service** | 8007 | Email, SMS, Push | Vercel |
 | **Analytics Service** | 8008 | Metrics, Dashboards | Vercel |
 | **Pricing Service** | 8009 | Dynamic pricing, subscriptions | Vercel |
+| **AI SEO Service** | 8010 | SEO analysis, optimization, rankings | Vercel |
 
 **Infrastructure:**  
 - **Database:** MongoDB Atlas (replica set)  
@@ -127,6 +128,26 @@ See [MICROSERVICES_DEPLOY.md](MICROSERVICES_DEPLOY.md) for detailed deployment g
 - `PUT /pricing/rules/{id}` — Update rule
 - `POST /pricing/calculate` — Calculate dynamic price
 - `POST /pricing/bulk-update` — Bulk price changes
+
+### 🤖 AI SEO & Rankings (NEW)
+
+| Feature | Description | Impact |
+|---------|-------------|--------|
+| AI SEO Analysis | Automated site analysis with scoring | Score: 0-100 |
+| Auto-Optimization | AI fixes meta tags, images, structured data | +15-20 points |
+| Keyword Tracking | Monitor rankings for target keywords | Real-time updates |
+| Competitor Analysis | Compare against Zillow, Realtor.com, Redfin | Gap analysis |
+| AI Content Gen | SEO-optimized content generation | 85-98 SEO score |
+| Ranking Monitor | Track Google, Bing, Yahoo positions | Daily updates |
+| Trend Analysis | Industry trending topics | Weekly insights |
+
+**SEO API:**
+- `POST /seo/analyze` — Analyze site/pages
+- `POST /seo/optimize` — Auto-optimize with AI
+- `GET /seo/keywords/suggestions` — AI keyword research
+- `GET /seo/competitors/analyze` — Competitor analysis
+- `POST /seo/content/generate` — AI content generation
+- `GET /seo/audit/full` — Comprehensive audit
 
 ### 🔄 CI/CD Pipeline
 
@@ -177,7 +198,14 @@ See [MICROSERVICES_DEPLOY.md](MICROSERVICES_DEPLOY.md) for detailed deployment g
 `GET /referrals` — Manage referrals (admin/agent)  
 `POST /referrals/{id}/status` — Update referral status  
 `GET /analytics` — Referral analytics dashboard  
-`POST /analytics/export` — Export PDF/Excel/JSON  
+`POST /analytics/export` — Export PDF/Excel/JSON
+
+### SEO & AI Rankings (NEW)
+`GET /seo` — SEO dashboard with AI optimization  
+`POST /seo/analyze` — Run AI site analysis  
+`POST /seo/optimize` — Auto-optimize site  
+`GET /seo/keywords` — Keyword ranking tracker  
+`GET /seo/competitors` — Competitor analysis  
 `POST /api/insurance/recommend` — AI-recommended plans  
 `POST /api/insurance/compare` — Compare plans side-by-side  
 `POST /api/insurance/sales/{id}/quotes` — Generate sale quotes  
@@ -208,6 +236,11 @@ cd frontend && npm install && npm run dev
 cd microservices/pricing-service
 pip install fastapi uvicorn motor redis
 uvicorn main:app --port 8009
+
+# AI SEO Service (NEW)
+cd microservices/seo-service
+pip install fastapi uvicorn
+uvicorn main:app --port 8010
 ```
 
 ---
@@ -222,6 +255,7 @@ REDIS_PASSWORD=cache-password
 
 # Microservices
 PRICING_API_URL=http://localhost:8009  # Pricing service
+SEO_API_URL=http://localhost:8010       # AI SEO service
 
 # Optional
 OPENAI_API_KEY=sk-...      # For AI features

@@ -11,6 +11,8 @@ import { PricingAdmin } from './components/PricingAdmin'
 import { Home } from './components/Home'
 import { SecurityCacheTesting } from './components/AdminPanel'
 import { SEODashboard } from './components/SEODashboard'
+import { TestCenter } from './components/TestCenter'
+import { AlertCenter, AlertContainer } from './components/AlertCenter'
 import './App.css'
 
 function ProtectedRoute({ children, isAuthenticated }) {
@@ -33,6 +35,7 @@ function App() {
     <Router>
       <div className="App">
         {isAuthenticated && <Navigation user={user} />}
+        <AlertContainer />
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
@@ -121,6 +124,22 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/test-center"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <TestCenter />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/alerts"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <AlertCenter />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Default Route */}
           <Route
@@ -176,11 +195,17 @@ function Navigation({ user }) {
           <a href="/test-features" className="nav-link">
             Test
           </a>
+          <a href="/test-center" className="nav-link">
+            Test Center
+          </a>
           <a href="/referrals" className="nav-link">
             Referrals
           </a>
           <a href="/analytics" className="nav-link">
             Analytics
+          </a>
+          <a href="/alerts" className="nav-link">
+            Alerts
           </a>
           {user?.role === 'admin' && (
             <>
