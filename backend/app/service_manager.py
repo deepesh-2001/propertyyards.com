@@ -245,6 +245,13 @@ class ServiceManager:
         logger.info("Cashback Service initialized")
         return cashback_service
 
+    async def _init_deployment(self, database, settings):
+        """Initialize deployment service"""
+        from app.deployment_service import deployment_service
+        await deployment_service.initialize()
+        logger.info("Deployment Service initialized")
+        return deployment_service
+
     async def _init_idle_processor(self, database, settings):
         """Initialize idle task processor"""
         from app.idle_task_processor import idle_task_processor, setup_idle_tasks
