@@ -3,7 +3,6 @@ Authentication routes
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.database import get_database
-from app.models import User
 from app.schemas import UserCreate, TokenResponse, TokenRequest, RefreshTokenRequest, UserResponse
 from app.auth import (
     hash_password,

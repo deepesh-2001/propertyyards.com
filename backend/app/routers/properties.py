@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_
 from app.database import get_db
-from app.models import User, Property, Wishlist, Inquiry
+from app.models import Property, Wishlist, Inquiry
 from app.schemas import (
     PropertyCreate,
     PropertyUpdate,

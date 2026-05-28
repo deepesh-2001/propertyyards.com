@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.database import get_db
-from app.models import User, Property, Inquiry, Wishlist
+from app.models import Property, Inquiry, Wishlist
 from app.schemas import UserResponse, UserUpdate, UserProfileResponse, PaginatedResponse
 from app.auth import decode_token
 from app.cache import get_from_cache, set_in_cache, delete_from_cache, generate_cache_key, invalidate_cache_pattern

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.database import get_db
-from app.models import Property, Inquiry, User
+from app.models import Property, Inquiry
 from app.schemas import InquiryCreate, InquiryResponse, InquiryUpdate, PaginatedResponse
 from app.auth import decode_token
 from app.cache import generate_cache_key, get_from_cache, set_in_cache, delete_from_cache

@@ -1,4 +1,4 @@
- the"""
+"""
 Environment configuration
 """
 from pydantic_settings import BaseSettings
@@ -190,7 +190,7 @@ class Settings(BaseSettings):
     IMAGE_ENABLE_WEBP: bool = True
     IMAGE_ENABLE_AVIF: bool = False
     IMAGE_CACHE_TTL: int = 86400  # 24 hours
-    IMAGE CDN_URL: str = ""
+    IMAGE_CDN_URL: str = ""
     
     # AWS S3 Configuration
     AWS_ACCESS_KEY_ID: str = ""

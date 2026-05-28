@@ -7,7 +7,6 @@ from app.main import app
 from app.database import SessionLocal, Base
 from app.config import settings
 from app.auth import hash_password, create_access_token
-from app.models import User
 from datetime import datetime, timedelta
 import json
 
