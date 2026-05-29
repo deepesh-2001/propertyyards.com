@@ -49,9 +49,21 @@ function PropertyCard({ property }) {
   )
 }
 
+const NEARBY_CITIES = ["Gurgaon", "Noida", "Greater Noida", "Faridabad", "Delhi"]
+
+function SectionGrid({ properties }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24, marginBottom: '3rem' }}>
+      {properties.map(p => <PropertyCard key={p.id} property={p} />)}
+    </div>
+  )
+}
+
 function Home() {
-  const forSale = TEST_PROPERTIES.filter(p => p.listing_type === 'sale')
-  const forRent = TEST_PROPERTIES.filter(p => p.listing_type === 'rent')
+  const featured  = TEST_PROPERTIES.filter(p => p.featured)
+  const gurgaon   = TEST_PROPERTIES.filter(p => p.city === 'Gurgaon')
+  const nearby    = TEST_PROPERTIES.filter(p => NEARBY_CITIES.includes(p.city) && p.city !== 'Gurgaon')
+  const forRent   = TEST_PROPERTIES.filter(p => p.listing_type === 'rent')
 
   return (
     <div style={{ background: '#f9fafb', minHeight: '100vh' }}>
@@ -62,18 +74,25 @@ function Home() {
           <input placeholder="Search city, locality, project..." style={{ border: 'none', outline: 'none', padding: '14px 20px', fontSize: 16, width: 360 }} />
           <button style={{ background: '#1a56db', color: '#fff', border: 'none', padding: '14px 28px', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>Search</button>
         </div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 20, flexWrap: 'wrap' }}>
+          {["Gurgaon", "Noida", "Delhi", "Greater Noida", "Faridabad", "Mumbai", "Bangalore"].map(c => (
+            <span key={c} style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', padding: '5px 16px', borderRadius: 20, fontSize: 14, cursor: 'pointer' }}>{c}</span>
+          ))}
+        </div>
       </div>
 
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '3rem 2rem' }}>
         <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: '1.5rem', color: '#111827' }}>🔥 Featured Properties</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24, marginBottom: '3rem' }}>
-          {forSale.map(p => <PropertyCard key={p.id} property={p} />)}
-        </div>
+        <SectionGrid properties={featured} />
+
+        <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: '1.5rem', color: '#111827' }}>🏙️ Properties in Gurgaon</h2>
+        <SectionGrid properties={gurgaon} />
+
+        <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: '1.5rem', color: '#111827' }}>📍 Nearby — Noida, Greater Noida, Faridabad & Dwarka</h2>
+        <SectionGrid properties={nearby} />
 
         <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: '1.5rem', color: '#111827' }}>🏡 Properties for Rent</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
-          {forRent.map(p => <PropertyCard key={p.id} property={p} />)}
-        </div>
+        <SectionGrid properties={forRent} />
       </div>
     </div>
   )
