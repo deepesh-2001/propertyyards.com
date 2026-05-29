@@ -36,35 +36,53 @@ export default function SearchBar({ filters, onChange }) {
   const inputRef    = useRef()
   const recognRef   = useRef()
   const suggestRef  = useRef()
+  const toastRef    = useRef(toast)
+  const onChangeRef = useRef(onChange)
+
+  useEffect(() => { toastRef.current  = toast },   [toast])
+  useEffect(() => { onChangeRef.current = onChange }, [onChange])
 
   /* ── Voice search setup ─────────────────── */
   useEffect(() => {
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (SpeechRec) {
-      setMicSupport(true)
-      const rec = new SpeechRec()
-      rec.continuous    = false
-      rec.interimResults= true
-      rec.maxAlternatives = 1
+    setMicSupport(!!SpeechRec)
+  }, [])
 
-      rec.onresult = (e) => {
-        const transcript = Array.from(e.results)
-          .map(r => r[0].transcript)
-          .join('')
-        setInputVal(transcript)
-        if (e.results[e.results.length - 1].isFinal) {
-          onChange({ search: transcript })
-          setListening(false)
-          toast(`🎤 "${transcript}"`, 'info')
-        }
-      }
-      rec.onerror = () => {
+  /* Create a fresh SpeechRecognition instance for each session */
+  const createRecognition = useCallback(() => {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRec) return null
+    const rec = new SpeechRec()
+    rec.continuous      = false
+    rec.interimResults  = true
+    rec.maxAlternatives = 1
+    rec.lang            = navigator.language || 'en-IN'
+
+    rec.onresult = (e) => {
+      const transcript = Array.from(e.results)
+        .map(r => r[0].transcript)
+        .join('')
+      setInputVal(transcript)
+      if (e.results[e.results.length - 1].isFinal) {
+        onChangeRef.current({ search: transcript })
         setListening(false)
-        toast('Microphone error. Please allow access.', 'error')
+        toastRef.current(`🎤 "${transcript}"`, 'info')
       }
-      rec.onend = () => setListening(false)
-      recognRef.current = rec
     }
+    rec.onerror = (e) => {
+      setListening(false)
+      if (e.error === 'not-allowed' || e.error === 'permission-denied') {
+        toastRef.current('🚫 Microphone access denied. Please allow it in browser settings.', 'error')
+      } else if (e.error === 'no-speech') {
+        toastRef.current('🎤 No speech detected. Try again.', 'info')
+      } else if (e.error === 'network') {
+        toastRef.current('🌐 Network error during voice recognition.', 'error')
+      } else {
+        toastRef.current(`Microphone error: ${e.error}`, 'error')
+      }
+    }
+    rec.onend = () => setListening(false)
+    return rec
   }, [])
 
   /* ── Suggestion filtering ───────────────── */
@@ -86,22 +104,34 @@ export default function SearchBar({ filters, onChange }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const toggleMic = () => {
-    if (!recognRef.current) return
+  const toggleMic = useCallback(async () => {
     if (listening) {
-      recognRef.current.stop()
+      recognRef.current?.stop()
       setListening(false)
-    } else {
-      try {
-        recognRef.current.lang = navigator.language || 'en-IN'
-        recognRef.current.start()
-        setListening(true)
-        toast('🎤 Listening... speak now', 'info')
-      } catch {
-        toast('Could not start microphone', 'error')
-      }
+      return
     }
-  }
+
+    /* Ask permission first so the browser doesn't silently fail */
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true })
+    } catch (err) {
+      toastRef.current('🚫 Microphone access denied. Please allow it in your browser settings.', 'error')
+      return
+    }
+
+    /* Always create a fresh instance — reusing a stopped instance throws InvalidStateError */
+    const rec = createRecognition()
+    if (!rec) return
+    recognRef.current = rec
+
+    try {
+      rec.start()
+      setListening(true)
+      toastRef.current('🎤 Listening… speak now', 'info')
+    } catch (err) {
+      toastRef.current(`Could not start microphone: ${err.message}`, 'error')
+    }
+  }, [listening, createRecognition])
 
   const applySearch = (val) => {
     setShowSug(false)
