@@ -1,0 +1,60 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: propertyyards_mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: propertyyards123
+      MONGO_INITDB_DATABASE: housing_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: propertyyards_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: propertyyards_backend
+    environment:
+      MONGODB_URL: mongodb://admin:propertyyards123@mongodb:27017/housing_db?authSource=admin
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET_KEY: your_jwt_secret_key_change_in_production
+      API_SECRET_KEY: your_api_secret_key_change_in_production
+      DEBUG: "false"
+      CORS_ORIGINS: '["http://localhost:5173","http://localhost:3000"]'
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ./backend:/app
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: propertyyards_frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+  redis_data:

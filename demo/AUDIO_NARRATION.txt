@@ -1,0 +1,24 @@
+PropertyYards Audio Narration Script 
+=============================== 
+ 
+[0:00-0:05] Opening 
+"Welcome to PropertyYards - India's most sophisticated real estate platform where ancient Vastu wisdom meets cutting-edge AI technology." 
+ 
+[0:05-0:15] Platform Overview 
+"Experience the future of real estate with our comprehensive platform. Whether you're buying, selling, or investing, PropertyYards revolutionizes your property journey." 
+ 
+[0:15-0:30] Key Statistics 
+"With over 10,000 properties listed, 50,000 happy users, and 500 crore plus in transactions, PropertyYards is trusted by thousands across India." 
+ 
+[0:30-1:00] Features Showcase 
+"Discover our revolutionary features: the Property Layout Designer for custom home planning, Vastu Shastra validation for positive energy, Astrology Insights for personalized guidance, and our Smart Messaging System for seamless communication." 
+ 
+[1:00-2:00] Platform Demonstration 
+"Watch as we demonstrate our AI-powered property search, interactive layout designer with real-time Vastu scoring, personalized astrology consultations, and advanced chat system for team collaboration." 
+ 
+[2:00-3:00] Advanced Features 
+"Enjoy powerful features including multilingual support in English, Hindi, Spanish, and French, AI-powered image processing, rewards system, and comprehensive analytics dashboard." 
+ 
+[3:00-4:00] Call to Action 
+"Ready to find your perfect property? Download PropertyYards now from the App Store, Google Play, or visit www.propertyyards.com. Where technology meets tradition." 
+ 
