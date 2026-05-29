@@ -169,7 +169,10 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
     if not authorization:
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
-        token = authorization.split(" ")[1]
+        parts = authorization.split(" ", 1)
+        if len(parts) != 2 or parts[0].lower() != "bearer":
+            raise HTTPException(status_code=401, detail="Invalid token format")
+        token = parts[1]
         token_data = decode_token(token)
         if token_data:
             return {

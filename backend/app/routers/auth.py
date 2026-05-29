@@ -1,7 +1,9 @@
 """
 Authentication routes
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
+from bson import ObjectId
+from datetime import datetime, timezone
 from app.database import get_database
 from app.schemas import UserCreate, TokenResponse, TokenRequest, RefreshTokenRequest, UserResponse
 from app.auth import (
@@ -9,10 +11,12 @@ from app.auth import (
     verify_password,
     create_access_token,
     create_refresh_token,
-    decode_token
+    decode_token,
+    invalidate_all_user_sessions
 )
 from app.feature_flags import require_feature_flag
 import logging
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -32,20 +36,24 @@ async def register(user_data: UserCreate, db = Depends(get_database)):
         )
 
     # Create new user
-    new_user = User(
-        email=user_data.email,
-        first_name=user_data.first_name,
-        last_name=user_data.last_name,
-        phone_number=user_data.phone_number,
-        password_hash=hash_password(user_data.password),
-        role=user_data.role
-    )
+    now = datetime.now(timezone.utc)
+    new_user_doc = {
+        "email": user_data.email,
+        "first_name": user_data.first_name,
+        "last_name": user_data.last_name,
+        "phone_number": user_data.phone_number,
+        "password_hash": hash_password(user_data.password),
+        "role": user_data.role,
+        "is_active": True,
+        "created_at": now,
+        "updated_at": now,
+    }
 
-    result = await db.users.insert_one(new_user.dict())
-    new_user.id = str(result.inserted_id)
+    result = await db.users.insert_one(new_user_doc)
+    new_user_doc["id"] = str(result.inserted_id)
 
-    logger.info(f"New user registered: {new_user.email}")
-    return new_user
+    logger.info(f"New user registered: {new_user_doc['email']}")
+    return UserResponse(**new_user_doc)
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -91,7 +99,7 @@ async def refresh_token(token_request: RefreshTokenRequest, db = Depends(get_dat
         )
 
     # Verify user still exists and is active
-    user = await db.users.find_one({"_id": token_data.user_id})
+    user = await db.users.find_one({"_id": ObjectId(token_data.user_id)})
     if not user or not user.get("is_active", True):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -110,7 +118,15 @@ async def refresh_token(token_request: RefreshTokenRequest, db = Depends(get_dat
 
 
 @router.post("/logout")
-async def logout():
-    """Logout user (client should delete tokens)"""
+async def logout(authorization: Optional[str] = Header(None)):
+    """Logout user — invalidates all server-side sessions"""
+    if authorization:
+        try:
+            token = authorization.split(" ", 1)[1]
+            token_data = decode_token(token)
+            if token_data:
+                await invalidate_all_user_sessions(token_data.user_id)
+        except Exception:
+            pass
     return {"message": "Logged out successfully"}
 
