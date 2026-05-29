@@ -1,6 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { FiMessageCircle, FiX, FiSend } from 'react-icons/fi'
+import { apiUrl, authHeaders } from '../../services/api'
 import './Chatbot.css'
+
+function getSessionId() {
+  let id = localStorage.getItem('chatbot_session_id')
+  if (!id) {
+    id = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)
+    localStorage.setItem('chatbot_session_id', id)
+  }
+  return id
+}
 
 const SUGGESTED = [
   'Show me 2BHK under ₹50L',
@@ -29,18 +39,15 @@ export function Chatbot() {
     setInput('')
     setSending(true)
     try {
-      const r = await fetch('/api/chatbot/message', {
+      const r = await fetch(apiUrl('/api/chatbot/chat'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('access_token') || ''}`,
-        },
-        body: JSON.stringify({ message: text }),
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ message: text, session_id: getSessionId() }),
       })
       let reply = 'Thanks! A team member will reach out via WhatsApp shortly.'
       if (r.ok) {
         const data = await r.json()
-        reply = data.reply || data.message || reply
+        reply = data.message || data.reply || reply
       }
       setMessages((m) => [...m, { role: 'bot', text: reply }])
     } catch {

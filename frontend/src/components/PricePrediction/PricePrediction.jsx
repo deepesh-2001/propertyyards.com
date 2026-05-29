@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { FiTrendingUp, FiTrendingDown, FiBarChart2 } from 'react-icons/fi'
+import { apiUrl, authHeaders } from '../../services/api'
 import './PricePrediction.css'
+
+const TIMEFRAME = '1 year'
+const HORIZON_MONTHS = 12
 
 /**
  * PricePrediction — predicts 1-year price change for a property.
@@ -13,14 +17,26 @@ export function PricePrediction({ property }) {
   useEffect(() => {
     if (!property?.id) return
     let cancelled = false
-    fetch(`/api/predict/price/${property.id}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('access_token') || ''}` },
+    fetch(apiUrl(`/api/predictions/property-value?property_id=${encodeURIComponent(property.id)}&timeframe=${encodeURIComponent(TIMEFRAME)}`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
     })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d) => !cancelled && setPred(d))
+      .then((d) => {
+        if (cancelled) return
+        // Map backend PropertyValuePrediction -> widget shape.
+        setPred({
+          current_price: d.current_value,
+          predicted_price: d.predicted_value,
+          change_pct: +(d.predicted_change_percent ?? 0).toFixed(1),
+          confidence: d.confidence ?? 0.7,
+          horizon_months: HORIZON_MONTHS,
+          source: 'api',
+        })
+      })
       .catch(() => {
         if (cancelled) return
-        // Mock: deterministic based on price
+        // Mock fallback: deterministic based on price
         const base = Number(property.price) || 5000000
         const change = ((Number(String(property.id).slice(-2)) % 11) - 3) / 100
         setPred({
@@ -28,7 +44,7 @@ export function PricePrediction({ property }) {
           predicted_price: Math.round(base * (1 + change)),
           change_pct: +(change * 100).toFixed(1),
           confidence: 0.72,
-          horizon_months: 12,
+          horizon_months: HORIZON_MONTHS,
           source: 'mock',
         })
       })

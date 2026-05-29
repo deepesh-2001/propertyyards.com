@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { FiCalendar, FiClock, FiPhone, FiUser, FiX, FiCheck } from 'react-icons/fi'
+import { apiUrl, authHeaders } from '../../services/api'
 import './SiteVisit.css'
 
 const TIME_SLOTS = ['10:00', '11:30', '13:00', '14:30', '16:00', '17:30']
@@ -34,12 +35,9 @@ export function SiteVisitModal({ propertyId, propertyTitle, onClose }) {
   const submit = async () => {
     setSubmitting(true)
     try {
-      await fetch('/api/site-visits', {
+      await fetch(apiUrl('/api/site-visits'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('access_token') || ''}`,
-        },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({
           property_id: propertyId,
           visit_date: date?.toISOString().slice(0, 10),

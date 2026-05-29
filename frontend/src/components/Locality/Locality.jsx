@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { FiMapPin, FiTrendingUp, FiHome, FiUsers, FiAlertCircle } from 'react-icons/fi'
+import { apiUrl } from '../../services/api'
 import './Locality.css'
 
 // Curated featured localities for SEO-rich pages.
@@ -40,7 +41,7 @@ export function LocalityDetail() {
   const [data, setData] = useState(null)
 
   useEffect(() => {
-    fetch(`/api/localities/${slug}`)
+    fetch(apiUrl(`/api/localities/${slug}`))
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(setData)
       .catch(() => {
