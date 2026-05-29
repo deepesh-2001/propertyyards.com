@@ -334,3 +334,11 @@
   color: #666;
 }
 
+
+/* Phase 1 additions */
+.owner-tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#047857;background:#ecfdf5;border:1px solid #a7f3d0;padding:2px 8px;border-radius:999px;margin-top:6px}
+.card-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.compare-toggle{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #d1d5db;background:#fff;border-radius:8px;font-size:12px;cursor:pointer}
+.compare-toggle.active{background:#eef2ff;border-color:#a5b4fc;color:#4338ca}
+.owner-only-toggle{display:inline-flex;align-items:center;gap:8px;margin:8px 0;font-size:13px;color:#374151;cursor:pointer}
+.modal-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}

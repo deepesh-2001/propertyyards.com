@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { propertyAPI, wishlistAPI } from '../services/api'
-import { FiMapPin, FiBed, FiBath, FiSquare, FiHeart, FiX } from 'react-icons/fi'
+import { FiMapPin, FiBed, FiBath, FiSquare, FiHeart, FiX, FiBarChart2, FiUser } from 'react-icons/fi'
+import { RERABadge } from '../RERABadge'
+import { EMICalculator } from '../EMICalculator'
+import { useCompareStore } from '../../stores/compareStore'
 import './Properties.css'
 
 export function PropertyList() {
@@ -66,6 +69,7 @@ export function PropertyList() {
                 )}
                 <div className="property-details">
                   <h3>{property.title}</h3>
+                  <RERABadge rera_id={property.rera_id} verified={property.verified} />
                   <p className="price">${property.price.toLocaleString()}</p>
                   <p className="location">
                     <FiMapPin /> {property.city}, {property.state}
@@ -81,15 +85,21 @@ export function PropertyList() {
                       <FiSquare /> {property.area.toLocaleString()} sqft
                     </span>
                   </div>
-                  <button
-                    className="wishlist-btn"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleAddToWishlist(property.id)
-                    }}
-                  >
-                    <FiHeart /> Wishlist
-                  </button>
+                  {property.is_owner && (
+                    <span className="owner-tag"><FiUser /> Listed by Owner</span>
+                  )}
+                  <div className="card-actions">
+                    <button
+                      className="wishlist-btn"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleAddToWishlist(property.id)
+                      }}
+                    >
+                      <FiHeart /> Wishlist
+                    </button>
+                    <CompareToggle property={property} />
+                  </div>
                 </div>
               </div>
             ))}
@@ -125,8 +135,34 @@ export function PropertyList() {
   )
 }
 
+function CompareToggle({ property }) {
+  const has = useCompareStore((s) => s.has(property.id))
+  const add = useCompareStore((s) => s.add)
+  const remove = useCompareStore((s) => s.remove)
+  const max = useCompareStore((s) => s.max)
+  const count = useCompareStore((s) => s.items.length)
+
+  return (
+    <button
+      className={`compare-toggle ${has ? 'active' : ''}`}
+      onClick={(e) => {
+        e.stopPropagation()
+        if (has) remove(property.id)
+        else {
+          const ok = add(property)
+          if (!ok && count >= max) alert(`You can only compare up to ${max} properties.`)
+        }
+      }}
+      title={has ? 'Remove from compare' : 'Add to compare'}
+    >
+      <FiBarChart2 /> {has ? 'In compare' : 'Compare'}
+    </button>
+  )
+}
+
 function PropertyModal({ property, onClose }) {
   const [isInquiryOpen, setIsInquiryOpen] = useState(false)
+  const [showEMI, setShowEMI] = useState(false)
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -143,6 +179,7 @@ function PropertyModal({ property, onClose }) {
 
         <div className="modal-body">
           <h2>{property.title}</h2>
+          <RERABadge rera_id={property.rera_id} verified={property.verified} size="md" />
           <p className="price">${property.price.toLocaleString()}</p>
           <p className="location">
             <FiMapPin /> {property.location}, {property.city}, {property.state}
@@ -173,12 +210,26 @@ function PropertyModal({ property, onClose }) {
             </div>
           )}
 
-          <button
-            className="btn btn-primary"
-            onClick={() => setIsInquiryOpen(true)}
-          >
-            Send Inquiry
-          </button>
+          <div className="modal-actions">
+            <button
+              className="btn btn-primary"
+              onClick={() => setIsInquiryOpen(true)}
+            >
+              Send Inquiry
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setShowEMI((v) => !v)}
+            >
+              {showEMI ? 'Hide' : 'Calculate'} EMI
+            </button>
+          </div>
+
+          {showEMI && (
+            <div style={{ marginTop: 16 }}>
+              <EMICalculator price={property.price || 5000000} />
+            </div>
+          )}
         </div>
 
         {isInquiryOpen && (
@@ -244,6 +295,7 @@ export function PropertySearch() {
     max_price: '',
     min_bedrooms: '',
     property_type: '',
+    owner_only: false,
     page: 1,
     limit: 20
   })
@@ -336,6 +388,16 @@ export function PropertySearch() {
             <option value="townhouse">Townhouse</option>
           </select>
         </div>
+
+        <label className="owner-only-toggle">
+          <input
+            type="checkbox"
+            name="owner_only"
+            checked={filters.owner_only}
+            onChange={(e) => setFilters((p) => ({ ...p, owner_only: e.target.checked, page: 1 }))}
+          />
+          <FiUser /> Listed by Owner only (No Broker)
+        </label>
 
         <button type="submit" className="btn btn-primary">
           {isLoading ? 'Searching...' : 'Search'}

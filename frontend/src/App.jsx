@@ -13,6 +13,7 @@ import { SecurityCacheTesting } from './components/AdminPanel'
 import { SEODashboard } from './components/SEODashboard'
 import { TestCenter } from './components/TestCenter'
 import { AlertCenter, AlertContainer } from './components/AlertCenter'
+import { CompareBar, ComparePage } from './components/Compare'
 import './App.css'
 
 function ProtectedRoute({ children, isAuthenticated }) {
@@ -36,6 +37,7 @@ function App() {
       <div className="App">
         {isAuthenticated && <Navigation user={user} />}
         <AlertContainer />
+        <CompareBar />
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
@@ -140,6 +142,14 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/compare"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <ComparePage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Default Route */}
           <Route
@@ -206,6 +216,9 @@ function Navigation({ user }) {
           </a>
           <a href="/alerts" className="nav-link">
             Alerts
+          </a>
+          <a href="/compare" className="nav-link">
+            Compare
           </a>
           {user?.role === 'admin' && (
             <>
