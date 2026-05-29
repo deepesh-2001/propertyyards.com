@@ -60,6 +60,10 @@ export default function Navbar() {
               <NavLink to="/?type=sale" active={loc.search.includes('sale')}>{tr('buy')}</NavLink>
               <NavLink to="/?type=rent" active={loc.search.includes('rent')}>{tr('rent')}</NavLink>
               <NavLink to="/brokers"    active={loc.pathname === '/brokers'}>{tr('brokers')}</NavLink>
+              <NavLink to="/finance"    active={loc.pathname === '/finance'}>{tr('finance')}</NavLink>
+              <NavLink to="/news"       active={loc.pathname === '/news'}>📰 News</NavLink>
+              <NavLink to="/about"      active={loc.pathname === '/about'}>About</NavLink>
+              <NavLink to="/contact"    active={loc.pathname === '/contact'}>Contact</NavLink>
             </div>
           )}
 
@@ -149,6 +153,10 @@ export default function Navbar() {
           <DrawerLink to="/?type=sale"   label={tr('buy')} />
           <DrawerLink to="/?type=rent"   label={tr('rent')} />
           <DrawerLink to="/brokers"      label={tr('brokers')} />
+          <DrawerLink to="/finance"      label={`💰 ${tr('finance')}`} />
+          <DrawerLink to="/news"         label="📰 News & Insights" />
+          <DrawerLink to="/about"        label="🏢 About Us" />
+          <DrawerLink to="/contact"      label="📞 Contact Us" />
           {isLoggedIn ? (
             <>
               <DrawerLink to="/dashboard"     label={`📊 ${tr('dashboard')}`} />
