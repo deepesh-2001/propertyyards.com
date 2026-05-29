@@ -31,16 +31,6 @@ def setup_security_middleware(app):
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     app.add_middleware(RateLimiter)
 
-    # CORS with security headers
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],  # Configure properly for production
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-        expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"]
-    )
-
     # GZip compression
     app.add_middleware(GZipMiddleware, minimum_size=1000)
 
