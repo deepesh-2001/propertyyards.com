@@ -1,0 +1,5 @@
+# Vercel Python runtime configuration.
+# IMPORTANT: Set the Vercel project's Root Directory to "backend" so this file
+# (and requirements.txt) is detected. The entrypoint is relative to that root.
+[tool.vercel]
+entrypoint = "app.main:app"
