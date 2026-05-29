@@ -361,6 +361,10 @@ class LeadResponse(BaseModel):
     tags: List[str]
 
 
+class LeadAssign(BaseModel):
+    assigned_to: str
+
+
 class InteractionCreate(BaseModel):
     interaction_type: InteractionType
     notes: str
@@ -1818,6 +1822,13 @@ class CommissionRuleCreate(BaseModel):
     base_rate: float = Field(..., ge=0, le=100)
     tier_rates: Optional[List[Dict[str, Any]]] = None  # [{"min_amount": 100000, "rate": 2.5}, ...]
     conditions: Optional[Dict[str, Any]] = None
+    # Product the rule applies to (e.g. "apartment", "villa", "loan", "insurance").
+    product_category: Optional[str] = None
+    product_id: Optional[str] = None
+    # Per-user rate overrides: [{"user_id": "...", "rate": 3.0, "tier_rates": [...]}]
+    user_rates: Optional[List[Dict[str, Any]]] = None
+    # ISO currency code; defaults to INR (India). Supports foreign currencies (USD, EUR, AED, ...).
+    currency: str = "INR"
     is_active: bool = True
     effective_date: datetime
     expiry_date: Optional[datetime] = None
@@ -1830,6 +1841,10 @@ class CommissionRuleResponse(BaseModel):
     base_rate: float
     tier_rates: List[Dict[str, Any]]
     conditions: Dict[str, Any]
+    product_category: Optional[str] = None
+    product_id: Optional[str] = None
+    user_rates: List[Dict[str, Any]] = []
+    currency: str = "INR"
     is_active: bool
     effective_date: datetime
     expiry_date: Optional[datetime]
@@ -1845,7 +1860,7 @@ class CommissionCreate(BaseModel):
     deal_type: str  # sale, rental
     deal_amount: float = Field(..., gt=0)
     calculated_amount: float = Field(..., ge=0)
-    currency: str = "USD"
+    currency: str = "INR"
     due_date: datetime
     notes: Optional[str] = None
 
@@ -1870,6 +1885,9 @@ class CommissionResponse(BaseModel):
     notes: Optional[str]
     approved_by: Optional[str]
     approved_at: Optional[datetime]
+    product_category: Optional[str] = None
+    product_id: Optional[str] = None
+    applied_base_rate: Optional[float] = None
     created_at: datetime
     updated_at: datetime
 
@@ -1905,6 +1923,119 @@ class CommissionAnalytics(BaseModel):
     monthly_trend: List[Dict[str, Any]]
     period_start: datetime
     period_end: datetime
+
+
+# ========== Incentive Schemas ==========
+class IncentiveType(str, Enum):
+    FLAT_BONUS = "flat_bonus"              # fixed amount
+    PER_UNIT = "per_unit"                  # amount per unit/deal sold
+    PERCENTAGE_OF_AMOUNT = "percentage_of_amount"  # % of sales amount
+    SLAB = "slab"                          # tiered by units/amount/achievement
+    TARGET_BASED = "target_based"          # bonus when a target is met
+    PRODUCT_BONUS = "product_bonus"        # flat bonus for selling a product
+
+
+class IncentiveStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    PAID = "paid"
+    REJECTED = "rejected"
+
+
+class IncentiveRuleCreate(BaseModel):
+    name: str
+    incentive_type: IncentiveType
+    product_category: Optional[str] = None
+    flat_amount: Optional[float] = Field(None, ge=0)       # FLAT_BONUS / PRODUCT_BONUS
+    per_unit_amount: Optional[float] = Field(None, ge=0)   # PER_UNIT
+    rate: Optional[float] = Field(None, ge=0, le=100)      # PERCENTAGE_OF_AMOUNT
+    slabs: Optional[List[Dict[str, Any]]] = None           # [{"min":0,"max":10,"amount":5000}] or {"min","rate"}
+    target: Optional[float] = Field(None, ge=0)            # TARGET_BASED
+    target_bonus: Optional[float] = Field(None, ge=0)      # TARGET_BASED bonus
+    conditions: Optional[Dict[str, Any]] = None
+    # ISO currency code; defaults to INR (India). Supports foreign currencies.
+    currency: str = "INR"
+    is_active: bool = True
+    effective_date: datetime
+    expiry_date: Optional[datetime] = None
+
+
+class IncentiveRuleResponse(IncentiveRuleCreate):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class IncentiveAwardCreate(BaseModel):
+    recipient_id: str
+    recipient_type: str = "employee"
+    incentive_rule_id: str
+    product_category: Optional[str] = None
+    units_sold: Optional[float] = Field(None, ge=0)
+    amount: Optional[float] = Field(None, ge=0)
+    achievement: Optional[float] = Field(None, ge=0)
+    currency: Optional[str] = None  # overrides the rule currency if set
+    period: Optional[str] = None    # e.g. "2026-05"
+    notes: Optional[str] = None
+
+
+class IncentiveResponse(BaseModel):
+    id: str
+    recipient_id: str
+    recipient_type: str
+    recipient_name: Optional[str] = None
+    incentive_rule_id: str
+    rule_name: str
+    incentive_type: IncentiveType
+    product_category: Optional[str] = None
+    calculated_amount: float
+    currency: str = "INR"
+    status: IncentiveStatus
+    period: Optional[str] = None
+    notes: Optional[str] = None
+    approved_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+# ========== Expected Return Schemas ==========
+class ExpectedReturnRequest(BaseModel):
+    principal: float = Field(..., gt=0)
+    term_months: int = Field(..., gt=0)
+    annual_return_rate: Optional[float] = None       # overall capital growth %/yr
+    appreciation_annual: Optional[float] = None       # capital appreciation %/yr (overrides annual_return_rate for capital)
+    rental_yield_annual: Optional[float] = Field(None, ge=0)  # income yield %/yr
+    compounding: bool = True
+    compounding_frequency: str = "annual"             # annual | semi_annual | quarterly | monthly
+    one_time_costs: float = Field(0.0, ge=0)
+    recurring_monthly_costs: float = Field(0.0, ge=0)
+    inflation_rate_annual: Optional[float] = None
+    risk_level: Optional[str] = None                  # low | moderate | high | speculative
+    currency: str = "INR"
+
+
+class ExpectedReturnResponse(BaseModel):
+    currency: str
+    principal: float
+    term_months: int
+    years: float
+    effective_annual_rate: float
+    capital_appreciation_rate: float
+    rental_yield_rate: float
+    maturity_value: float
+    total_return: float
+    capital_gain: float
+    total_rental_income: float
+    monthly_income: float
+    one_time_costs: float
+    absolute_roi_pct: float
+    annualized_roi_pct: float
+    real_annualized_roi_pct: Optional[float] = None
+    risk_level: Optional[str] = None
+    risk_factor: Optional[float] = None
+    risk_adjusted_roi_pct: Optional[float] = None
+    yearly_breakdown: List[Dict[str, Any]] = []
 
 
 # ========== Future Prediction Schemas ==========

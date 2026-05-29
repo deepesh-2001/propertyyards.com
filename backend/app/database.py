@@ -103,6 +103,18 @@ async def create_indexes():
         await database.commissions.create_index([("recipient_id", 1)])
         await database.commissions.create_index([("status", 1)])
         await database.commissions.create_index([("created_at", -1)])
+        await database.commissions.create_index([("product_category", 1)])
+        await database.commission_rules.create_index([("commission_type", 1)])
+        await database.commission_rules.create_index([("product_category", 1)])
+        await database.commission_rules.create_index([("is_active", 1)])
+
+        # Incentive collection indexes
+        await database.incentive_rules.create_index([("incentive_type", 1)])
+        await database.incentive_rules.create_index([("product_category", 1)])
+        await database.incentive_rules.create_index([("is_active", 1)])
+        await database.incentives.create_index([("recipient_id", 1)])
+        await database.incentives.create_index([("status", 1)])
+        await database.incentives.create_index([("created_at", -1)])
         
         # Credit cards collection indexes
         await database.credit_cards.create_index([("user_id", 1)])

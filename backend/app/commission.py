@@ -9,6 +9,8 @@ import logging
 from app.schemas import (
     CommissionType,
     CommissionStatus,
+    IncentiveType,
+    IncentiveStatus,
     NotificationChannel,
     InvestmentNotificationCreate
 )
@@ -38,19 +40,46 @@ class CommissionCalculator:
         deal_amount: float,
         commission_type: CommissionType,
         tier_rates: Optional[List[Dict[str, Any]]] = None,
-        conditions: Optional[Dict[str, Any]] = None
+        conditions: Optional[Dict[str, Any]] = None,
+        base_rate: Optional[float] = None
     ) -> float:
-        """Calculate commission based on deal amount and rules"""
+        """Calculate commission based on deal amount and rules.
+
+        ``base_rate`` overrides the default rate for the commission type, which
+        enables per-user / per-product rates. ``tier_rates`` (if provided) take
+        precedence over a flat rate.
+        """
         if tier_rates:
             return self._calculate_tiered_commission(deal_amount, tier_rates)
         
-        base_rate = self.default_rates.get(commission_type, 0)
+        if base_rate is None:
+            base_rate = self.default_rates.get(commission_type, 0)
         
         # Apply conditions if any
         if conditions:
             base_rate = self._apply_conditions(base_rate, conditions)
         
         return deal_amount * (base_rate / 100)
+
+    def resolve_rate_config(
+        self,
+        rule: Dict[str, Any],
+        recipient_id: str
+    ) -> tuple:
+        """Resolve (base_rate, tier_rates) for a recipient honoring per-user overrides.
+
+        Per-user overrides live in ``rule['user_rates']`` as a list of
+        ``{"user_id": ..., "rate": ..., "tier_rates": [...]}`` entries. When a
+        recipient has an override it wins over the rule's default rate, allowing
+        different users to earn different commission on the same product.
+        """
+        for entry in rule.get("user_rates") or []:
+            if entry.get("user_id") == recipient_id:
+                return (
+                    entry.get("rate", rule.get("base_rate")),
+                    entry.get("tier_rates") or rule.get("tier_rates")
+                )
+        return rule.get("base_rate"), rule.get("tier_rates")
     
     def _calculate_tiered_commission(
         self,
@@ -134,21 +163,27 @@ class CommissionProcessor:
         recipient_id: str,
         recipient_type: str,
         commission_rule_id: str,
-        database
+        database,
+        product_category: Optional[str] = None,
+        product_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Calculate commission for a deal"""
+        """Calculate commission for a deal, honoring per-user / per-product rates."""
         try:
             # Get commission rule
             rule = await database.commission_rules.find_one({"_id": commission_rule_id})
             if not rule:
                 raise ValueError("Commission rule not found")
             
+            # Resolve the rate for this recipient (per-user override wins).
+            resolved_rate, resolved_tiers = self.calculator.resolve_rate_config(rule, recipient_id)
+            
             # Calculate commission amount
             calculated_amount = self.calculator.calculate_commission(
                 deal_amount=deal_amount,
                 commission_type=rule["commission_type"],
-                tier_rates=rule.get("tier_rates"),
-                conditions=rule.get("conditions")
+                tier_rates=resolved_tiers,
+                conditions=rule.get("conditions"),
+                base_rate=resolved_rate
             )
             
             # Get recipient name
@@ -173,7 +208,10 @@ class CommissionProcessor:
                 "deal_type": deal_type,
                 "deal_amount": deal_amount,
                 "calculated_amount": calculated_amount,
-                "currency": "USD",
+                "product_category": product_category or rule.get("product_category"),
+                "product_id": product_id or rule.get("product_id"),
+                "applied_base_rate": resolved_rate,
+                "currency": rule.get("currency") or "INR",
                 "status": CommissionStatus.PENDING,
                 "due_date": datetime.utcnow() + timedelta(days=30),
                 "notes": None,
@@ -244,12 +282,13 @@ class CommissionProcessor:
                 raise ValueError("No approved commissions found")
             
             total_amount = sum(c["calculated_amount"] for c in commissions)
+            payout_currency = commissions[0].get("currency", "INR") if commissions else "INR"
             
             # Create payout record
             payout = {
                 "commission_ids": commission_ids,
                 "total_amount": total_amount,
-                "currency": "USD",
+                "currency": payout_currency,
                 "payment_method_id": payment_method_id,
                 "gateway": gateway,
                 "status": "processing",
@@ -527,5 +566,172 @@ class CommissionProcessor:
         return yearly_returns
 
 
+class IncentiveCalculator:
+    """Calculates incentives from an incentive rule and achieved metrics."""
+
+    def calculate(
+        self,
+        rule: Dict[str, Any],
+        units: Optional[float] = None,
+        amount: Optional[float] = None,
+        achievement: Optional[float] = None
+    ) -> float:
+        """Compute the incentive amount for the given metrics.
+
+        - ``units``: number of products/deals sold (PER_UNIT, SLAB)
+        - ``amount``: sales/deal amount (PERCENTAGE_OF_AMOUNT, SLAB)
+        - ``achievement``: metric vs target (TARGET_BASED, SLAB)
+        """
+        itype = rule.get("incentive_type")
+
+        if itype in (IncentiveType.FLAT_BONUS, IncentiveType.FLAT_BONUS.value,
+                     IncentiveType.PRODUCT_BONUS, IncentiveType.PRODUCT_BONUS.value):
+            return float(rule.get("flat_amount") or 0)
+
+        if itype in (IncentiveType.PER_UNIT, IncentiveType.PER_UNIT.value):
+            return float(rule.get("per_unit_amount") or 0) * float(units or 0)
+
+        if itype in (IncentiveType.PERCENTAGE_OF_AMOUNT, IncentiveType.PERCENTAGE_OF_AMOUNT.value):
+            return float(amount or 0) * (float(rule.get("rate") or 0) / 100)
+
+        if itype in (IncentiveType.TARGET_BASED, IncentiveType.TARGET_BASED.value):
+            target = float(rule.get("target") or 0)
+            if target > 0 and achievement is not None and achievement >= target:
+                return float(rule.get("target_bonus") or 0)
+            return 0.0
+
+        if itype in (IncentiveType.SLAB, IncentiveType.SLAB.value):
+            return self._calculate_slab(
+                rule.get("slabs") or [], units=units, amount=amount, achievement=achievement
+            )
+
+        return 0.0
+
+    def _calculate_slab(
+        self,
+        slabs: List[Dict[str, Any]],
+        units: Optional[float] = None,
+        amount: Optional[float] = None,
+        achievement: Optional[float] = None
+    ) -> float:
+        """Resolve a slab-based incentive.
+
+        Each slab: ``{"min": x, "max": y, "amount": z}`` for a flat payout, or
+        ``{"min": x, "max": y, "rate": r}`` for a percentage of ``amount``.
+        The matched slab is chosen by the available metric (units > achievement > amount).
+        """
+        metric = units if units is not None else (achievement if achievement is not None else amount)
+        if metric is None:
+            return 0.0
+        for slab in slabs:
+            lo = slab.get("min", 0) or 0
+            hi = slab.get("max")
+            if metric >= lo and (hi is None or metric <= hi):
+                if slab.get("amount") is not None:
+                    return float(slab["amount"])
+                if slab.get("rate") is not None and amount is not None:
+                    return float(amount) * (float(slab["rate"]) / 100)
+        return 0.0
+
+
+class IncentiveProcessor:
+    """Awards and manages incentive records."""
+
+    def __init__(self):
+        self.calculator = IncentiveCalculator()
+
+    async def award_incentive(
+        self,
+        recipient_id: str,
+        recipient_type: str,
+        incentive_rule_id: str,
+        database,
+        product_category: Optional[str] = None,
+        units_sold: Optional[float] = None,
+        amount: Optional[float] = None,
+        achievement: Optional[float] = None,
+        currency: Optional[str] = None,
+        period: Optional[str] = None,
+        notes: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Calculate and persist an incentive for a recipient."""
+        rule = await database.incentive_rules.find_one({"_id": incentive_rule_id})
+        if not rule:
+            raise ValueError("Incentive rule not found")
+        if not rule.get("is_active", True):
+            raise ValueError("Incentive rule is not active")
+
+        calculated_amount = self.calculator.calculate(
+            rule, units=units_sold, amount=amount, achievement=achievement
+        )
+
+        recipient_name = ""
+        if recipient_type == "broker":
+            broker = await database.brokers.find_one({"_id": recipient_id})
+            if broker:
+                recipient_name = broker.get("name", "")
+        else:
+            employee = await database.users.find_one({"_id": recipient_id})
+            if employee:
+                recipient_name = f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip()
+
+        now = datetime.utcnow()
+        incentive = {
+            "recipient_id": recipient_id,
+            "recipient_type": recipient_type,
+            "recipient_name": recipient_name,
+            "incentive_rule_id": incentive_rule_id,
+            "rule_name": rule.get("name", ""),
+            "incentive_type": rule.get("incentive_type"),
+            "product_category": product_category or rule.get("product_category"),
+            "units_sold": units_sold,
+            "amount": amount,
+            "achievement": achievement,
+            "calculated_amount": calculated_amount,
+            "currency": currency or rule.get("currency") or "INR",
+            "status": IncentiveStatus.PENDING,
+            "period": period,
+            "notes": notes,
+            "approved_by": None,
+            "approved_at": None,
+            "created_at": now,
+            "updated_at": now
+        }
+
+        result = await database.incentives.insert_one(incentive)
+        incentive["id"] = str(result.inserted_id)
+        logger.info(f"Incentive awarded to {recipient_id}: {calculated_amount}")
+        return incentive
+
+    async def approve_incentive(
+        self,
+        incentive_id: str,
+        approved_by: str,
+        database
+    ) -> Dict[str, Any]:
+        """Approve a pending incentive."""
+        result = await database.incentives.update_one(
+            {"_id": incentive_id},
+            {
+                "$set": {
+                    "status": IncentiveStatus.APPROVED,
+                    "approved_by": approved_by,
+                    "approved_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow()
+                }
+            }
+        )
+        if result.modified_count == 0:
+            raise ValueError("Incentive not found")
+
+        incentive = await database.incentives.find_one({"_id": incentive_id})
+        incentive["id"] = str(incentive["_id"])
+        del incentive["_id"]
+        return incentive
+
+
 # Global commission processor instance
 commission_processor = CommissionProcessor()
+
+# Global incentive processor instance
+incentive_processor = IncentiveProcessor()

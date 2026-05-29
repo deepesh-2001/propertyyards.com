@@ -10,7 +10,7 @@ import logging
 import sys
 
 from app.config import settings
-from app.routers import auth, users, properties, inquiries, admin, crm, referral, access, loan_calculator, contact, notifications, chatbot, brokers, reports, monitoring, recruitment, payments, self_healing, salary, commission, prediction, feedback, credit_card, reimbursement, claims, tax, onboarding, scraper, property_onboarding, feature_flags, whiteboard, analytics, cache_management, properties_cached, realtime, admin_portal, social_media, telegram, news, operations, architecture, ai_costs, ai_seo, comparison, cashback, deployment, tickets, rewards, insurance, cabs, trains, hotels
+from app.routers import auth, users, properties, inquiries, admin, crm, referral, access, loan_calculator, contact, notifications, chatbot, brokers, reports, monitoring, recruitment, payments, self_healing, salary, commission, prediction, feedback, credit_card, reimbursement, claims, tax, onboarding, scraper, property_onboarding, feature_flags, whiteboard, analytics, cache_management, properties_cached, realtime, admin_portal, social_media, telegram, news, operations, architecture, ai_costs, ai_seo, comparison, cashback, deployment, tickets, rewards, insurance, cabs, trains, hotels, expected_return
 from app import health, cron
 from app.access import AccessControl
 from app.security import setup_security_middleware
@@ -151,6 +151,7 @@ app.include_router(payments.router)
 app.include_router(salary.router)
 app.include_router(commission.router)
 app.include_router(prediction.router)
+app.include_router(expected_return.router)
 app.include_router(feedback.router)
 app.include_router(credit_card.router)
 app.include_router(reimbursement.router)

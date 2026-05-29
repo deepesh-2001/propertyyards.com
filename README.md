@@ -34,7 +34,10 @@ http://localhost/docs   # Swagger UI (dev only)
 - Recruitment, onboarding/offboarding, attendance
 
 ### 💰 Finance
-- Commissions (tiered by property value), payroll, tax (India/RBI compliance)
+- **Commissions** — tiered by value, **per-product rates** (`product_category`/`product_id`) and **per-user rate overrides** so different agents earn different commission on different products
+- **Incentives** — flat bonus, per-unit, % of amount, slab, target-based, and product bonus schemes
+- **Multi-currency** — commissions & incentives default to **INR (India)** and support foreign currencies (USD, EUR, GBP, AED, SGD, ...) with live conversion
+- Payroll, tax (India/RBI compliance)
 - Reimbursements, claims, credit cards, cashback & rewards
 - Multi-gateway payments: Stripe, Razorpay, PayPal, PayU, Square, Braintree, Mollie
 - Ticket booking with loyalty rewards
@@ -42,6 +45,7 @@ http://localhost/docs   # Swagger UI (dev only)
 ### 📊 Analytics & Reports
 - Sales records, market projections, growth analysis
 - Projects pipeline, investment ROI & risk assessment
+- **Expected return calculator** — projects ROI for any investment and for every project/opportunity (capital appreciation + rental yield, compounding, inflation-adjusted & risk-adjusted returns, year-by-year breakdown)
 - AI-powered forecasts via Google Gemini
 
 ### 🛡️ Insurance
@@ -285,6 +289,13 @@ Add these in **GitHub → Settings → Secrets and variables → Actions**:
 `POST /api/properties` — Create listing  
 `GET /api/comparison` — Compare properties side-by-side
 
+### Expected Return
+`POST /api/expected-return/calculate` — Expected return for any investment  
+`GET /api/expected-return/investments/{id}` — Return for one investment opportunity  
+`GET /api/expected-return/projects/{id}` — Return for one future project  
+`GET /api/expected-return/investments` — Returns for **every** investment opportunity  
+`GET /api/expected-return/projects` — Returns for **every** future project
+
 ### Reports
 `GET /api/reports/sales` — Sales report (CSV/PDF/JSON)  
 `GET /api/reports/projections` — Market forecasts  
@@ -293,7 +304,14 @@ Add these in **GitHub → Settings → Secrets and variables → Actions**:
 `POST /api/reports/ai-projection` — AI market forecast
 
 ### Finance
-`POST /api/commission/calculate` — Calculate commission  
+`POST /api/commissions/rules` — Create commission rule (per-product / per-user rates) *(admin/manager/finance)*  
+`POST /api/commissions/calculate` — Calculate commission (honors per-user/per-product rates)  
+`POST /api/commissions/incentive-rules` — Create incentive rule *(admin/manager/finance)*  
+`POST /api/commissions/incentives/award` — Award an incentive *(admin/manager/finance)*  
+`GET /api/commissions/recipients/{id}/incentives` — List a recipient's incentives  
+`PUT /api/commissions/incentives/{id}/approve` — Approve an incentive *(admin/manager/finance)*  
+`GET /api/commissions/currencies` — Supported currencies (INR default + foreign)  
+`GET /api/commissions/convert` — Convert an amount between currencies (e.g. INR↔USD)  
 `POST /api/salary/periods/{id}/process` — Run payroll  
 `POST /api/tax/compute` — Compute India tax  
 `POST /api/payments/charge` — Process payment  

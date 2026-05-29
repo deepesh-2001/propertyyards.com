@@ -5,6 +5,7 @@ Handles commission rules, calculations, and payouts
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Optional
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 from app.database import get_db
 from app.schemas import (
@@ -17,14 +18,32 @@ from app.schemas import (
     CommissionAnalytics,
     CommissionType,
     CommissionStatus,
-    PaymentGateway
+    PaymentGateway,
+    IncentiveRuleCreate,
+    IncentiveRuleResponse,
+    IncentiveAwardCreate,
+    IncentiveResponse,
+    IncentiveStatus,
 )
-from app.commission import commission_processor
+from app.commission import commission_processor, incentive_processor
+from app.currency_manager import currency_manager
 from app.auth import get_current_user
 from app.cache import get_from_cache, set_in_cache, delete_from_cache, generate_cache_key, invalidate_cache_pattern
 from app.feature_flags import require_feature_flag
 
 router = APIRouter(prefix="/api/commissions", tags=["commissions"])
+
+# Roles allowed to manage commission/incentive rules and approve payouts.
+MANAGE_ROLES = {"admin", "manager", "finance"}
+
+
+def require_manage_access(current_user: dict):
+    """Raise 403 unless the user may manage commissions/incentives."""
+    if current_user.get("role") not in MANAGE_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail="Only admin, manager, or finance roles can manage commissions and incentives"
+        )
 
 
 # ========== Commission Rules Endpoints ==========
@@ -36,7 +55,15 @@ async def create_commission_rule(
     database=Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    """Create a new commission rule"""
+    """Create a new commission rule (admin/manager/finance only).
+
+    Supports per-product rules (``product_category`` / ``product_id``) and
+    per-user rate overrides (``user_rates``) so different users can earn
+    different commission on different products.
+    """
+    require_manage_access(current_user)
+    if not currency_manager.is_valid_currency(rule.currency):
+        raise HTTPException(status_code=400, detail=f"Unsupported currency: {rule.currency}")
     try:
         rule_data = rule.dict()
         rule_data.update({
@@ -118,10 +145,12 @@ async def calculate_commission(
     recipient_id: str,
     recipient_type: str,
     commission_rule_id: str,
+    product_category: Optional[str] = None,
+    product_id: Optional[str] = None,
     database=Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    """Calculate commission for a deal"""
+    """Calculate commission for a deal (honors per-user / per-product rates)."""
     try:
         commission = await commission_processor.calculate_deal_commission(
             deal_id=deal_id,
@@ -130,7 +159,9 @@ async def calculate_commission(
             recipient_id=recipient_id,
             recipient_type=recipient_type,
             commission_rule_id=commission_rule_id,
-            database=database
+            database=database,
+            product_category=product_category,
+            product_id=product_id
         )
         return commission
     except Exception as e:
@@ -538,3 +569,212 @@ async def get_total_returns(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ========== Incentive Endpoints ==========
+
+@router.post("/incentive-rules", response_model=IncentiveRuleResponse, status_code=status.HTTP_201_CREATED)
+@require_feature_flag("commission_system")
+async def create_incentive_rule(
+    rule: IncentiveRuleCreate,
+    database=Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Create an incentive rule (admin/manager/finance only)."""
+    require_manage_access(current_user)
+    if not currency_manager.is_valid_currency(rule.currency):
+        raise HTTPException(status_code=400, detail=f"Unsupported currency: {rule.currency}")
+    try:
+        rule_data = rule.dict()
+        rule_data.update({
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        })
+        result = await database.incentive_rules.insert_one(rule_data)
+        rule_data["id"] = str(result.inserted_id)
+        await invalidate_cache_pattern("incentive_rules:*")
+        return IncentiveRuleResponse(**rule_data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/incentive-rules", response_model=List[IncentiveRuleResponse])
+@require_feature_flag("commission_system")
+async def get_incentive_rules(
+    is_active: Optional[bool] = None,
+    product_category: Optional[str] = None,
+    database=Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """List incentive rules."""
+    cache_key = generate_cache_key(
+        "incentive_rules", product_category or "all", is_active
+    )
+    cached_result = await get_from_cache(cache_key)
+    if cached_result:
+        return [IncentiveRuleResponse(**r) for r in cached_result]
+
+    query = {}
+    if is_active is not None:
+        query["is_active"] = is_active
+    if product_category:
+        query["product_category"] = product_category
+
+    cursor = database.incentive_rules.find(query).sort("created_at", -1)
+    rules = await cursor.to_list(length=100)
+    for rule in rules:
+        rule["id"] = str(rule["_id"])
+        del rule["_id"]
+
+    # Cache the result (15 minutes - rules change rarely)
+    await set_in_cache(cache_key, rules, ttl=900)
+
+    return [IncentiveRuleResponse(**r) for r in rules]
+
+
+@router.get("/incentive-rules/{rule_id}", response_model=IncentiveRuleResponse)
+@require_feature_flag("commission_system")
+async def get_incentive_rule(
+    rule_id: str,
+    database=Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get a specific incentive rule."""
+    rule = await database.incentive_rules.find_one({"_id": rule_id})
+    if not rule:
+        raise HTTPException(status_code=404, detail="Incentive rule not found")
+    rule["id"] = str(rule["_id"])
+    del rule["_id"]
+    return IncentiveRuleResponse(**rule)
+
+
+@router.post("/incentives/award", response_model=IncentiveResponse, status_code=status.HTTP_201_CREATED)
+@require_feature_flag("commission_system")
+async def award_incentive(
+    award: IncentiveAwardCreate,
+    database=Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Calculate and award an incentive to a recipient (admin/manager/finance only)."""
+    require_manage_access(current_user)
+    if award.currency and not currency_manager.is_valid_currency(award.currency):
+        raise HTTPException(status_code=400, detail=f"Unsupported currency: {award.currency}")
+    try:
+        incentive = await incentive_processor.award_incentive(
+            recipient_id=award.recipient_id,
+            recipient_type=award.recipient_type,
+            incentive_rule_id=award.incentive_rule_id,
+            database=database,
+            product_category=award.product_category,
+            units_sold=award.units_sold,
+            amount=award.amount,
+            achievement=award.achievement,
+            currency=award.currency,
+            period=award.period,
+            notes=award.notes
+        )
+        return IncentiveResponse(**incentive)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/recipients/{recipient_id}/incentives", response_model=List[IncentiveResponse])
+@require_feature_flag("commission_system")
+async def get_recipient_incentives(
+    recipient_id: str,
+    status: Optional[IncentiveStatus] = None,
+    database=Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """List incentives awarded to a recipient."""
+    query = {"recipient_id": recipient_id}
+    if status:
+        query["status"] = status
+    cursor = database.incentives.find(query).sort("created_at", -1)
+    incentives = await cursor.to_list(length=100)
+    for incentive in incentives:
+        incentive["id"] = str(incentive["_id"])
+        del incentive["_id"]
+    return [IncentiveResponse(**i) for i in incentives]
+
+
+@router.put("/incentives/{incentive_id}/approve", response_model=IncentiveResponse)
+@require_feature_flag("commission_system")
+async def approve_incentive(
+    incentive_id: str,
+    database=Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Approve a pending incentive (admin/manager/finance only)."""
+    require_manage_access(current_user)
+    try:
+        incentive = await incentive_processor.approve_incentive(
+            incentive_id=incentive_id,
+            approved_by=current_user.get("user_id"),
+            database=database
+        )
+        return IncentiveResponse(**incentive)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ========== Currency Endpoints ==========
+
+@router.get("/currencies")
+async def list_supported_currencies(
+    fiat_only: bool = True,
+    current_user: dict = Depends(get_current_user)
+):
+    """List supported currencies for commissions/incentives (INR + foreign)."""
+    currencies = (
+        currency_manager.get_fiat_currencies() if fiat_only
+        else currency_manager.get_all_currencies()
+    )
+    return {
+        "default": "INR",
+        "currencies": [
+            {
+                "code": c.code,
+                "name": c.name,
+                "symbol": c.symbol,
+                "decimal_places": c.decimal_places,
+                "is_crypto": c.is_crypto,
+            }
+            for c in currencies
+        ],
+    }
+
+
+@router.get("/convert")
+async def convert_currency(
+    amount: float,
+    from_currency: str,
+    to_currency: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Convert an amount between currencies (e.g. INR <-> USD).
+
+    Requires exchange rates to be loaded; returns 503 if a rate is unavailable.
+    """
+    from_currency = from_currency.upper()
+    to_currency = to_currency.upper()
+    if not currency_manager.is_valid_currency(from_currency):
+        raise HTTPException(status_code=400, detail=f"Unsupported currency: {from_currency}")
+    if not currency_manager.is_valid_currency(to_currency):
+        raise HTTPException(status_code=400, detail=f"Unsupported currency: {to_currency}")
+    try:
+        converted = currency_manager.convert(Decimal(str(amount)), from_currency, to_currency)
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    return {
+        "amount": amount,
+        "from_currency": from_currency,
+        "to_currency": to_currency,
+        "converted_amount": float(converted),
+        "formatted": currency_manager.format_amount(converted, to_currency),
+        "rate_age_minutes": currency_manager.get_rate_age_minutes(),
+    }
