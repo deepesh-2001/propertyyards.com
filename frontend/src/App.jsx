@@ -15,6 +15,10 @@ import Finance from './pages/Finance'
 import About from './pages/About'
 import News from './pages/News'
 import Contact from './pages/Contact'
+import Wishlist from './pages/Wishlist'
+import Compare from './pages/Compare'
+import NewProjects from './pages/NewProjects'
+import LocalityInsights from './pages/LocalityInsights'
 
 function App() {
   return (
@@ -34,6 +38,10 @@ function App() {
         <Route path="/about"         element={<About />} />
         <Route path="/news"          element={<News />} />
         <Route path="/contact"       element={<Contact />} />
+        <Route path="/wishlist"      element={<Wishlist />} />
+        <Route path="/compare"       element={<Compare />} />
+        <Route path="/new-projects"  element={<NewProjects />} />
+        <Route path="/locality"      element={<LocalityInsights />} />
       </Routes>
       <Footer />
     </AuthProvider>

@@ -2,17 +2,20 @@ import { Link } from 'react-router-dom'
 
 const LINKS = {
   'Explore': [
-    { label: '🏠 Buy Property',     to: '/?type=sale' },
-    { label: '🔑 Rent Property',    to: '/?type=rent' },
-    { label: '🧑‍💼 Find Brokers',  to: '/brokers' },
-    { label: '💰 Finance & Loans',  to: '/finance' },
-    { label: '📰 News & Insights',  to: '/news' },
+    { label: '🏠 Buy Property',      to: '/?type=sale' },
+    { label: '🔑 Rent Property',     to: '/?type=rent' },
+    { label: '🏗 New Projects',      to: '/new-projects' },
+    { label: '🧑‍💼 Find Brokers',   to: '/brokers' },
+    { label: '💰 Finance & Loans',   to: '/finance' },
+    { label: '📊 Locality Insights', to: '/locality' },
+    { label: '📰 News & Insights',   to: '/news' },
   ],
   'Quick Links': [
     { label: '📝 Post Your Property', to: '/post-property' },
     { label: '📊 My Dashboard',       to: '/dashboard' },
+    { label: '❤️ My Wishlist',        to: '/wishlist' },
+    { label: '⚖️ Compare Properties', to: '/compare' },
     { label: '🏦 EMI Calculator',     to: '/finance' },
-    { label: '📋 Loan Comparison',    to: '/finance' },
     { label: '🛡 Insurance',          to: '/finance' },
   ],
   'Company': [

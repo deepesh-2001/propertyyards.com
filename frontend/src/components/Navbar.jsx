@@ -5,6 +5,7 @@ import { useToast } from '../context/ToastContext'
 import { useLang } from '../context/LangContext'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 import { useTimeGreeting } from '../hooks/useTimeGreeting'
+import { getWishlist } from '../pages/Wishlist'
 
 export default function Navbar() {
   const { user, logout, isLoggedIn } = useAuth()
@@ -18,6 +19,13 @@ export default function Navbar() {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [langMenuOpen, setLangMenuOpen] = useState(false)
   const [mobileOpen,   setMobileOpen]   = useState(false)
+  const [wishCount,    setWishCount]    = useState(() => getWishlist().length)
+
+  useEffect(() => {
+    const handler = () => setWishCount(getWishlist().length)
+    window.addEventListener('wishlist-change', handler)
+    return () => window.removeEventListener('wishlist-change', handler)
+  }, [])
 
   const userRef = useRef()
   const langRef = useRef()
@@ -61,6 +69,8 @@ export default function Navbar() {
               <NavLink to="/?type=rent" active={loc.search.includes('rent')}>{tr('rent')}</NavLink>
               <NavLink to="/brokers"    active={loc.pathname === '/brokers'}>{tr('brokers')}</NavLink>
               <NavLink to="/finance"    active={loc.pathname === '/finance'}>{tr('finance')}</NavLink>
+              <NavLink to="/new-projects" active={loc.pathname === '/new-projects'}>🏗 New</NavLink>
+              <NavLink to="/locality"   active={loc.pathname === '/locality'}>📊 Insights</NavLink>
               <NavLink to="/news"       active={loc.pathname === '/news'}>📰 News</NavLink>
               <NavLink to="/about"      active={loc.pathname === '/about'}>About</NavLink>
               <NavLink to="/contact"    active={loc.pathname === '/contact'}>Contact</NavLink>
@@ -73,6 +83,12 @@ export default function Navbar() {
             {!compact && isLoggedIn && (
               <span style={s.greeting}>{tr(greetKey)}</span>
             )}
+
+            {/* Wishlist icon */}
+            <Link to="/wishlist" style={s.wishBtn} title="My Wishlist">
+              ❤️
+              {wishCount > 0 && <span style={s.wishBadge}>{wishCount}</span>}
+            </Link>
 
             {/* Language switcher */}
             <div ref={langRef} style={{ position: 'relative' }}>
@@ -154,6 +170,10 @@ export default function Navbar() {
           <DrawerLink to="/?type=rent"   label={tr('rent')} />
           <DrawerLink to="/brokers"      label={tr('brokers')} />
           <DrawerLink to="/finance"      label={`💰 ${tr('finance')}`} />
+          <DrawerLink to="/new-projects" label="🏗 New Projects" />
+          <DrawerLink to="/locality"     label="📊 Locality Insights" />
+          <DrawerLink to="/compare"      label="⚖️ Compare Properties" />
+          <DrawerLink to="/wishlist"     label={`❤️ Wishlist${wishCount > 0 ? ` (${wishCount})` : ''}`} />
           <DrawerLink to="/news"         label="📰 News & Insights" />
           <DrawerLink to="/about"        label="🏢 About Us" />
           <DrawerLink to="/contact"      label="📞 Contact Us" />
@@ -201,6 +221,8 @@ const s = {
   avatar:       { display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 24, padding: '4px 12px 4px 5px', cursor: 'pointer', color: '#fff', transition: 'all 0.2s' },
   avatarLetter: { width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg, #1a56db, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 },
   avatarName:   { fontSize: 13, fontWeight: 600 },
+  wishBtn:      { position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', fontSize: 16, textDecoration: 'none' },
+  wishBadge:    { position: 'absolute', top: -3, right: -3, background: '#ef4444', color: '#fff', borderRadius: '50%', width: 16, height: 16, fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   hamburger:    { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, padding: '7px 12px', color: '#fff', fontSize: 18, cursor: 'pointer', lineHeight: 1 },
   dropdown:     { position: 'absolute', right: 0, top: 'calc(100% + 8px)', background: '#fff', borderRadius: 14, border: '1px solid #e2e8f0', boxShadow: '0 8px 32px rgba(0,0,0,0.15)', minWidth: 180, overflow: 'hidden', zIndex: 400 },
   dropHeader:   { padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' },
