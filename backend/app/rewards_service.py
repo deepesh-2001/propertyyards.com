@@ -407,9 +407,11 @@ class RewardsService:
         self,
         user_id: str,
         points: float,
-        conversion_type: str = "wallet_credit"  # wallet_credit, bank_transfer
+        conversion_type: str = "wallet_credit",  # wallet_credit, bank_transfer, gift_card
+        bank_details: Optional[Dict] = None,
+        gift_card_type: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Convert reward points to cash"""
+        """Convert reward points to cash, bank transfer, or gift card"""
         try:
             wallet = self.get_or_create_wallet(user_id)
             tier_config = self.tier_config[wallet.tier]
@@ -423,50 +425,239 @@ class RewardsService:
             if monthly_converted + points > tier_config["max_monthly_conversion"]:
                 raise ValueError(f"Monthly conversion limit exceeded. Max: {tier_config['max_monthly_conversion']}")
             
-            # Calculate conversion
-            conversion_fee = points * tier_config["conversion_fee"]
-            net_points = points - conversion_fee
-            cash_value = net_points * self.points_to_inr_rate
+            # Calculate conversion based on type
+            if conversion_type == "gift_card":
+                result = await self._convert_to_gift_card(user_id, points, gift_card_type, wallet, tier_config)
+            elif conversion_type == "bank_transfer":
+                result = await self._convert_to_bank_transfer(user_id, points, bank_details, wallet, tier_config)
+            else:  # wallet_credit
+                result = await self._convert_to_wallet_credit(user_id, points, wallet, tier_config)
             
-            # Create redemption transaction
-            redemption_tx = RewardTransaction(
-                id=f"redemption_{datetime.utcnow().timestamp()}_{user_id}",
-                user_id=user_id,
-                transaction_type=TransactionType.POINTS_REDEMPTION,
-                points_type=PointsType.COMMISSION_POINTS,  # Generic, will be split
-                points=-points,  # Negative for redemption
-                amount=cash_value,
-                description=f"Points conversion: {points} points -> ₹{cash_value} ({conversion_type})",
-                redeemed=True,
-                redeemed_at=datetime.utcnow(),
-                redeemed_for=conversion_type
-            )
-            
-            # Update wallet
-            wallet.available_points -= points
-            wallet.redeemed_points += points
-            wallet.lifetime_redeemed += points
-            wallet.updated_at = datetime.utcnow()
-            
-            # Update monthly conversion tracking
-            self.monthly_conversions[user_id] = monthly_converted + points
-            
-            self.transactions[redemption_tx.id] = redemption_tx
-            
-            logger.info(f"Points converted: {points} -> ₹{cash_value} for user {user_id}")
-            
-            return {
-                "points_converted": points,
-                "conversion_fee": conversion_fee,
-                "net_points": net_points,
-                "cash_value": round(cash_value, 2),
-                "conversion_type": conversion_type,
-                "remaining_points": wallet.available_points
-            }
+            return result
             
         except Exception as e:
             logger.error(f"Points conversion failed: {e}")
             raise
+
+    async def _convert_to_wallet_credit(
+        self,
+        user_id: str,
+        points: float,
+        wallet: UserRewardsWallet,
+        tier_config: Dict
+    ) -> Dict[str, Any]:
+        """Convert points to wallet credit (instant)"""
+        conversion_fee = points * tier_config["conversion_fee"]
+        net_points = points - conversion_fee
+        cash_value = net_points * self.points_to_inr_rate
+        
+        # Create redemption transaction
+        redemption_tx = RewardTransaction(
+            id=f"redemption_wallet_{datetime.utcnow().timestamp()}_{user_id}",
+            user_id=user_id,
+            transaction_type=TransactionType.POINTS_REDEMPTION,
+            points_type=PointsType.COMMISSION_POINTS,
+            points=-points,
+            amount=cash_value,
+            description=f"Points converted to wallet credit: {points} points -> ₹{cash_value}",
+            redeemed=True,
+            redeemed_at=datetime.utcnow(),
+            redeemed_for="wallet_credit"
+        )
+        
+        # Update wallet
+        wallet.available_points -= points
+        wallet.redeemed_points += points
+        wallet.lifetime_redeemed += points
+        wallet.updated_at = datetime.utcnow()
+        
+        self.monthly_conversions[user_id] = self.monthly_conversions.get(user_id, 0) + points
+        self.transactions[redemption_tx.id] = redemption_tx
+        
+        logger.info(f"Points converted to wallet: {points} -> ₹{cash_value} for user {user_id}")
+        
+        return {
+            "points_converted": points,
+            "conversion_fee": conversion_fee,
+            "net_points": net_points,
+            "cash_value": round(cash_value, 2),
+            "conversion_type": "wallet_credit",
+            "remaining_points": wallet.available_points,
+            "processed_at": datetime.utcnow().isoformat(),
+            "status": "completed"
+        }
+
+    async def _convert_to_bank_transfer(
+        self,
+        user_id: str,
+        points: float,
+        bank_details: Optional[Dict],
+        wallet: UserRewardsWallet,
+        tier_config: Dict
+    ) -> Dict[str, Any]:
+        """Convert points to bank transfer (2-3 business days)"""
+        if not bank_details:
+            raise ValueError("Bank details required for bank transfer")
+        
+        # Validate bank details
+        required_fields = ["account_number", "ifsc_code", "account_holder_name"]
+        for field in required_fields:
+            if not bank_details.get(field):
+                raise ValueError(f"Missing bank detail: {field}")
+        
+        # Bank transfers have additional fee
+        bank_fee_rate = 0.02  # 2% bank processing fee
+        conversion_fee = points * (tier_config["conversion_fee"] + bank_fee_rate)
+        net_points = points - conversion_fee
+        cash_value = net_points * self.points_to_inr_rate
+        
+        # Minimum bank transfer amount
+        if cash_value < 500:
+            raise ValueError("Minimum bank transfer amount is ₹500")
+        
+        # Create redemption transaction
+        redemption_tx = RewardTransaction(
+            id=f"redemption_bank_{datetime.utcnow().timestamp()}_{user_id}",
+            user_id=user_id,
+            transaction_type=TransactionType.POINTS_REDEMPTION,
+            points_type=PointsType.COMMISSION_POINTS,
+            points=-points,
+            amount=cash_value,
+            description=f"Points converted to bank transfer: {points} points -> ₹{cash_value}",
+            redeemed=True,
+            redeemed_at=datetime.utcnow(),
+            redeemed_for="bank_transfer"
+        )
+        
+        # Update wallet
+        wallet.available_points -= points
+        wallet.redeemed_points += points
+        wallet.lifetime_redeemed += points
+        wallet.updated_at = datetime.utcnow()
+        
+        self.monthly_conversions[user_id] = self.monthly_conversions.get(user_id, 0) + points
+        self.transactions[redemption_tx.id] = redemption_tx
+        
+        # Store bank transfer request (in production, this would go to a processing queue)
+        transfer_request = {
+            "transaction_id": redemption_tx.id,
+            "user_id": user_id,
+            "amount": cash_value,
+            "bank_details": {
+                "account_number": bank_details["account_number"][-4:].rjust(len(bank_details["account_number"]), "*"),  # Masked
+                "ifsc_code": bank_details["ifsc_code"],
+                "account_holder_name": bank_details["account_holder_name"]
+            },
+            "status": "pending",
+            "requested_at": datetime.utcnow().isoformat(),
+            "estimated_completion": (datetime.utcnow() + timedelta(days=3)).isoformat()
+        }
+        
+        logger.info(f"Bank transfer requested: {points} points -> ₹{cash_value} for user {user_id}")
+        
+        return {
+            "points_converted": points,
+            "conversion_fee": conversion_fee,
+            "bank_fee": points * bank_fee_rate,
+            "net_points": net_points,
+            "cash_value": round(cash_value, 2),
+            "conversion_type": "bank_transfer",
+            "remaining_points": wallet.available_points,
+            "transfer_request": transfer_request,
+            "status": "pending",
+            "message": "Bank transfer initiated. Will be processed within 2-3 business days."
+        }
+
+    async def _convert_to_gift_card(
+        self,
+        user_id: str,
+        points: float,
+        gift_card_type: Optional[str],
+        wallet: UserRewardsWallet,
+        tier_config: Dict
+    ) -> Dict[str, Any]:
+        """Convert points to gift card (instant)"""
+        
+        # Available gift cards
+        gift_cards = {
+            "amazon": {"name": "Amazon Gift Card", "value_multiplier": 1.0, "min_points": 500},
+            "flipkart": {"name": "Flipkart Gift Card", "value_multiplier": 1.0, "min_points": 500},
+            "myntra": {"name": "Myntra Gift Card", "value_multiplier": 0.95, "min_points": 300},
+            "swiggy": {"name": "Swiggy Gift Card", "value_multiplier": 1.0, "min_points": 200},
+            "zomato": {"name": "Zomato Gift Card", "value_multiplier": 1.0, "min_points": 200},
+            "bigbasket": {"name": "BigBasket Gift Card", "value_multiplier": 0.98, "min_points": 300},
+            "uber": {"name": "Uber Gift Card", "value_multiplier": 1.0, "min_points": 300},
+        }
+        
+        if not gift_card_type or gift_card_type not in gift_cards:
+            raise ValueError(f"Invalid gift card type. Available: {list(gift_cards.keys())}")
+        
+        card_config = gift_cards[gift_card_type]
+        
+        # Check minimum points
+        if points < card_config["min_points"]:
+            raise ValueError(f"Minimum {card_config['min_points']} points required for {card_config['name']}")
+        
+        # Calculate value
+        conversion_fee = points * tier_config["conversion_fee"]
+        net_points = points - conversion_fee
+        base_value = net_points * self.points_to_inr_rate
+        gift_card_value = base_value * card_config["value_multiplier"]
+        
+        # Create redemption transaction
+        redemption_tx = RewardTransaction(
+            id=f"redemption_gift_{datetime.utcnow().timestamp()}_{user_id}",
+            user_id=user_id,
+            transaction_type=TransactionType.POINTS_REDEMPTION,
+            points_type=PointsType.COMMISSION_POINTS,
+            points=-points,
+            amount=gift_card_value,
+            description=f"Points converted to {card_config['name']}: {points} points -> ₹{gift_card_value}",
+            redeemed=True,
+            redeemed_at=datetime.utcnow(),
+            redeemed_for=f"gift_card_{gift_card_type}"
+        )
+        
+        # Update wallet
+        wallet.available_points -= points
+        wallet.redeemed_points += points
+        wallet.lifetime_redeemed += points
+        wallet.updated_at = datetime.utcnow()
+        
+        self.monthly_conversions[user_id] = self.monthly_conversions.get(user_id, 0) + points
+        self.transactions[redemption_tx.id] = redemption_tx
+        
+        # Generate gift card code (mock - in production, this would integrate with gift card provider)
+        gift_card_code = self._generate_gift_card_code()
+        
+        logger.info(f"Gift card generated: {points} points -> ₹{gift_card_value} {card_config['name']} for user {user_id}")
+        
+        return {
+            "points_converted": points,
+            "conversion_fee": conversion_fee,
+            "net_points": net_points,
+            "gift_card_value": round(gift_card_value, 2),
+            "conversion_type": "gift_card",
+            "gift_card_type": gift_card_type,
+            "gift_card_name": card_config["name"],
+            "gift_card_code": gift_card_code,  # In production, this would be real
+            "gift_card_pin": self._generate_gift_card_pin(),  # Masked in response
+            "valid_until": (datetime.utcnow() + timedelta(days=365)).isoformat(),
+            "remaining_points": wallet.available_points,
+            "status": "completed",
+            "message": f"Gift card generated! Check your email for the card details."
+        }
+
+    def _generate_gift_card_code(self) -> str:
+        """Generate gift card code"""
+        import random
+        import string
+        return ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
+
+    def _generate_gift_card_pin(self) -> str:
+        """Generate gift card PIN"""
+        import random
+        return ''.join(random.choices(string.digits, k=6))
 
     async def convert_cashback_to_points(
         self,

@@ -14,9 +14,18 @@ router = APIRouter(prefix="/api/rewards", tags=["rewards"])
 
 # ========== Request Models ==========
 
+class BankDetails(BaseModel):
+    account_number: str
+    ifsc_code: str
+    account_holder_name: str
+    bank_name: Optional[str] = None
+
+
 class ConvertPointsRequest(BaseModel):
     points: float
-    conversion_type: str = "wallet_credit"  # wallet_credit, bank_transfer
+    conversion_type: str = "wallet_credit"  # wallet_credit, bank_transfer, gift_card
+    bank_details: Optional[BankDetails] = None  # Required for bank_transfer
+    gift_card_type: Optional[str] = None  # Required for gift_card: amazon, flipkart, myntra, swiggy, zomato, bigbasket, uber
 
 
 class ConvertCashbackRequest(BaseModel):
@@ -78,22 +87,101 @@ async def convert_points_to_cash(
     request: ConvertPointsRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    """Convert reward points to cash"""
+    """Convert reward points to wallet credit, bank transfer, or gift card"""
     try:
         from app.rewards_service import rewards_service
         
         user_id = str(current_user.get("_id"))
         
+        # Convert bank_details to dict if provided
+        bank_details = None
+        if request.bank_details:
+            bank_details = {
+                "account_number": request.bank_details.account_number,
+                "ifsc_code": request.bank_details.ifsc_code,
+                "account_holder_name": request.bank_details.account_holder_name,
+                "bank_name": request.bank_details.bank_name
+            }
+        
         result = await rewards_service.convert_points_to_cash(
             user_id=user_id,
             points=request.points,
-            conversion_type=request.conversion_type
+            conversion_type=request.conversion_type,
+            bank_details=bank_details,
+            gift_card_type=request.gift_card_type
         )
+        
+        # Custom message based on conversion type
+        if request.conversion_type == "gift_card":
+            message = f"{request.points} points converted to {result['gift_card_name']} worth ₹{result['gift_card_value']}"
+        elif request.conversion_type == "bank_transfer":
+            message = f"{request.points} points queued for bank transfer (₹{result['cash_value']}). Will be processed within 2-3 business days."
+        else:
+            message = f"{request.points} points converted to ₹{result['cash_value']} wallet credit"
         
         return {
             "success": True,
             "conversion": result,
-            "message": f"{request.points} points converted to ₹{result['cash_value']}"
+            "message": message
+        }
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/preview-conversion")
+async def preview_conversion(
+    points: float,
+    conversion_type: str = "wallet_credit",
+    gift_card_type: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Preview conversion result before confirming"""
+    try:
+        from app.rewards_service import rewards_service
+        
+        user_id = str(current_user.get("_id"))
+        wallet = rewards_service.get_or_create_wallet(user_id)
+        tier_config = rewards_service.tier_config[wallet.tier]
+        
+        # Check available points
+        if wallet.available_points < points:
+            raise ValueError(f"Insufficient points. Available: {wallet.available_points}")
+        
+        # Calculate fees and value
+        conversion_fee_rate = tier_config["conversion_fee"]
+        
+        if conversion_type == "bank_transfer":
+            conversion_fee_rate += 0.02  # 2% bank fee
+            
+        conversion_fee = points * conversion_fee_rate
+        net_points = points - conversion_fee
+        base_value = net_points * rewards_service.points_to_inr_rate
+        
+        # Gift card value multiplier
+        gift_cards = {
+            "amazon": 1.0, "flipkart": 1.0, "myntra": 0.95,
+            "swiggy": 1.0, "zomato": 1.0, "bigbasket": 0.98, "uber": 1.0
+        }
+        
+        final_value = base_value
+        if conversion_type == "gift_card" and gift_card_type:
+            multiplier = gift_cards.get(gift_card_type, 1.0)
+            final_value = base_value * multiplier
+        
+        return {
+            "points": points,
+            "conversion_type": conversion_type,
+            "tier": wallet.tier.value,
+            "conversion_fee_rate": conversion_fee_rate,
+            "conversion_fee": round(conversion_fee, 2),
+            "net_points": round(net_points, 2),
+            "final_value": round(final_value, 2),
+            "gift_card_type": gift_card_type,
+            "available_points": wallet.available_points,
+            "remaining_after_conversion": wallet.available_points - points
         }
         
     except ValueError as e:
@@ -232,6 +320,26 @@ async def get_referral_stats(
 
 
 # ========== Tier & Benefits Endpoints ==========
+
+@router.get("/gift-cards")
+async def get_gift_card_options(
+    current_user: dict = Depends(get_current_user)
+):
+    """Get available gift card conversion options"""
+    return {
+        "gift_cards": [
+            {"type": "amazon", "name": "Amazon Gift Card", "min_points": 500, "value_multiplier": 1.0},
+            {"type": "flipkart", "name": "Flipkart Gift Card", "min_points": 500, "value_multiplier": 1.0},
+            {"type": "myntra", "name": "Myntra Gift Card", "min_points": 300, "value_multiplier": 0.95},
+            {"type": "swiggy", "name": "Swiggy Gift Card", "min_points": 200, "value_multiplier": 1.0},
+            {"type": "zomato", "name": "Zomato Gift Card", "min_points": 200, "value_multiplier": 1.0},
+            {"type": "bigbasket", "name": "BigBasket Gift Card", "min_points": 300, "value_multiplier": 0.98},
+            {"type": "uber", "name": "Uber Gift Card", "min_points": 300, "value_multiplier": 1.0}
+        ],
+        "conversion_rate": "1 point = ₹1 (before fees)",
+        "validity": "365 days from issue"
+    }
+
 
 @router.get("/tiers")
 async def get_tier_info(
