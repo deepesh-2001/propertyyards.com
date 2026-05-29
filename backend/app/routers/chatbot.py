@@ -2,7 +2,8 @@
 Chat Bot Router
 Endpoints for AI-powered chat bot
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
+from typing import Optional
 from app.database import get_database
 from app.chatbot import ChatBot, PropertySearchBot
 from app.schemas import ChatRequest, ChatResponse, ChatHistoryItem
@@ -34,7 +35,7 @@ def get_current_user(authorization: str = None) -> dict:
 @router.post("/chat", response_model=ChatResponse)
 async def chat(
     chat_request: ChatRequest,
-    authorization: str = None,
+    authorization: Optional[str] = Header(None),
     db = Depends(get_database)
 ):
     """Send message to chat bot and get response"""
@@ -57,7 +58,7 @@ async def chat(
 @router.get("/history/{session_id}")
 async def get_chat_history(
     session_id: str,
-    authorization: str = None,
+    authorization: Optional[str] = Header(None),
     db = Depends(get_database)
 ):
     """Get chat history for a session"""
@@ -75,7 +76,7 @@ async def get_chat_history(
 @router.delete("/history/{session_id}")
 async def clear_chat_history(
     session_id: str,
-    authorization: str = None,
+    authorization: Optional[str] = Header(None),
     db = Depends(get_database)
 ):
     """Clear chat history for a session"""
@@ -93,7 +94,7 @@ async def clear_chat_history(
 @router.post("/search")
 async def search_properties_chat(
     query: str,
-    authorization: str = None,
+    authorization: Optional[str] = Header(None),
     db = Depends(get_database)
 ):
     """Search properties using natural language"""

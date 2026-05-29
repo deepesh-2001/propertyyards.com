@@ -2,7 +2,7 @@
 Redis Pipeline Operations
 High-performance batch Redis operations using pipelining
 """
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional, List, Union, Callable
 import asyncio
 import logging
 import json

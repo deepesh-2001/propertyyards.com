@@ -3,6 +3,7 @@ Authentication and authorization
 """
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from fastapi import Header
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
@@ -158,8 +159,12 @@ async def get_active_sessions(user_id: str) -> list:
     return await session_manager.get_user_sessions(user_id)
 
 
-def get_current_user(authorization: str = None) -> dict:
-    """Extract and validate current user from Authorization header (Bearer token)."""
+def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
+    """Extract and validate current user from the Authorization header (Bearer token).
+
+    Declared with fastapi.Header so that when used via Depends() the value is read
+    from the HTTP `Authorization` header rather than a query parameter.
+    """
     from fastapi import HTTPException
     if not authorization:
         raise HTTPException(status_code=401, detail="Not authenticated")
