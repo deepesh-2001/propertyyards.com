@@ -77,6 +77,11 @@ export default function PropertyDetail() {
               </span>
               {property.featured && <span style={{ ...s.badge, background: '#f59e0b' }}>⭐ Featured</span>}
               {property.premium_listing && <span style={{ ...s.badge, background: '#7c3aed' }}>Premium</span>}
+              {property.ai_generated && (
+                <span style={{ ...s.badge, background: 'linear-gradient(135deg,#0ea5e9,#6366f1)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  ✨ AI Generated
+                </span>
+              )}
             </div>
 
             <h1 style={s.title}>{property.title}</h1>
@@ -114,6 +119,15 @@ export default function PropertyDetail() {
             {property.description && (
               <>
                 <h2 style={s.h2}>About this property</h2>
+                {property.ai_generated && (
+                  <div style={s.aiNotice}>
+                    <span style={s.aiIcon}>✨</span>
+                    <div>
+                      <div style={s.aiTitle}>AI-Generated Content</div>
+                      <div style={s.aiSub}>This property description was crafted by AI to give you the most detailed, accurate, and engaging overview. All specifications (area, price, bedrooms) are verified data.</div>
+                    </div>
+                  </div>
+                )}
                 <p style={s.descText}>{property.description}</p>
               </>
             )}
@@ -201,4 +215,8 @@ const s = {
   input:        { border: '1px solid #d1d5db', borderRadius: 8, padding: '10px 14px', fontSize: 14, outline: 'none', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' },
   submitBtn:    { background: '#1a56db', color: '#fff', border: 'none', borderRadius: 8, padding: '12px', fontSize: 15, fontWeight: 700, cursor: 'pointer' },
   success:      { background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', borderRadius: 10, padding: '1rem', textAlign: 'center', fontSize: 15 },
+  aiNotice:     { display: 'flex', alignItems: 'flex-start', gap: 12, background: 'linear-gradient(135deg,#f0f9ff,#eef2ff)', border: '1px solid #bae6fd', borderRadius: 12, padding: '12px 16px', marginBottom: 16 },
+  aiIcon:       { fontSize: 22, flexShrink: 0, marginTop: 1 },
+  aiTitle:      { fontSize: 13, fontWeight: 700, color: '#0369a1', marginBottom: 2 },
+  aiSub:        { fontSize: 12, color: '#4b5563', lineHeight: 1.5 },
 }

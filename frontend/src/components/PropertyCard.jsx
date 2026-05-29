@@ -25,7 +25,7 @@ export function PropertyCardSkeleton() {
 }
 
 export default function PropertyCard({ property }) {
-  const { id, title, city, state, price, listing_type, bedrooms, bathrooms, area, images, featured, premium_listing, property_type, furnished } = property
+  const { id, title, city, state, price, listing_type, bedrooms, bathrooms, area, images, featured, premium_listing, property_type, furnished, ai_generated } = property
   const [wishlist, setWishlist] = useState(false)
   const [hovered, setHovered]  = useState(false)
 
@@ -50,6 +50,7 @@ export default function PropertyCard({ property }) {
         <div style={s.topLeft}>
           {featured        && <span style={{ ...s.tag, background: '#f59e0b' }}>⭐ Featured</span>}
           {premium_listing && <span style={{ ...s.tag, background: '#7c3aed' }}>✦ Premium</span>}
+          {ai_generated    && <span style={{ ...s.tag, background: 'linear-gradient(135deg,#0ea5e9,#6366f1)', display: 'flex', alignItems: 'center', gap: 4 }}>✨ AI Generated</span>}
         </div>
         <span style={{ ...s.typeTag, background: listing_type === 'rent' ? '#059669' : '#1a56db' }}>
           {listing_type === 'rent' ? 'For Rent' : 'For Sale'}
