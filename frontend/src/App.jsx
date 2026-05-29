@@ -14,6 +14,7 @@ import { SEODashboard } from './components/SEODashboard'
 import { TestCenter } from './components/TestCenter'
 import { AlertCenter, AlertContainer } from './components/AlertCenter'
 import { CompareBar, ComparePage } from './components/Compare'
+import { SavedSearchesPage } from './components/SavedSearches'
 import './App.css'
 
 function ProtectedRoute({ children, isAuthenticated }) {
@@ -150,6 +151,14 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/saved-searches"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <SavedSearchesPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Default Route */}
           <Route
@@ -219,6 +228,9 @@ function Navigation({ user }) {
           </a>
           <a href="/compare" className="nav-link">
             Compare
+          </a>
+          <a href="/saved-searches" className="nav-link">
+            Saved
           </a>
           {user?.role === 'admin' && (
             <>

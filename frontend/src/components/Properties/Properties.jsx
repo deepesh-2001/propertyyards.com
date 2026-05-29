@@ -3,7 +3,11 @@ import { propertyAPI, wishlistAPI } from '../services/api'
 import { FiMapPin, FiBed, FiBath, FiSquare, FiHeart, FiX, FiBarChart2, FiUser } from 'react-icons/fi'
 import { RERABadge } from '../RERABadge'
 import { EMICalculator } from '../EMICalculator'
+import { SiteVisitModal } from '../SiteVisit'
+import { LiveViewers } from '../LiveViewers'
+import { SaveSearchButton } from '../SavedSearches'
 import { useCompareStore } from '../../stores/compareStore'
+import { FiCalendar } from 'react-icons/fi'
 import './Properties.css'
 
 export function PropertyList() {
@@ -163,6 +167,7 @@ function CompareToggle({ property }) {
 function PropertyModal({ property, onClose }) {
   const [isInquiryOpen, setIsInquiryOpen] = useState(false)
   const [showEMI, setShowEMI] = useState(false)
+  const [showVisit, setShowVisit] = useState(false)
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -180,6 +185,7 @@ function PropertyModal({ property, onClose }) {
         <div className="modal-body">
           <h2>{property.title}</h2>
           <RERABadge rera_id={property.rera_id} verified={property.verified} size="md" />
+          <div style={{ marginTop: 8 }}><LiveViewers propertyId={property.id} /></div>
           <p className="price">${property.price.toLocaleString()}</p>
           <p className="location">
             <FiMapPin /> {property.location}, {property.city}, {property.state}
@@ -218,12 +224,26 @@ function PropertyModal({ property, onClose }) {
               Send Inquiry
             </button>
             <button
+              className="btn btn-primary"
+              onClick={() => setShowVisit(true)}
+            >
+              <FiCalendar /> Book Site Visit
+            </button>
+            <button
               className="btn btn-secondary"
               onClick={() => setShowEMI((v) => !v)}
             >
               {showEMI ? 'Hide' : 'Calculate'} EMI
             </button>
           </div>
+
+          {showVisit && (
+            <SiteVisitModal
+              propertyId={property.id}
+              propertyTitle={property.title}
+              onClose={() => setShowVisit(false)}
+            />
+          )}
 
           {showEMI && (
             <div style={{ marginTop: 16 }}>
@@ -399,9 +419,12 @@ export function PropertySearch() {
           <FiUser /> Listed by Owner only (No Broker)
         </label>
 
-        <button type="submit" className="btn btn-primary">
-          {isLoading ? 'Searching...' : 'Search'}
-        </button>
+        <div className="search-form-actions">
+          <button type="submit" className="btn btn-primary">
+            {isLoading ? 'Searching...' : 'Search'}
+          </button>
+          <SaveSearchButton filters={filters} />
+        </div>
       </form>
 
       {results.length > 0 && (

@@ -342,3 +342,5 @@
 .compare-toggle.active{background:#eef2ff;border-color:#a5b4fc;color:#4338ca}
 .owner-only-toggle{display:inline-flex;align-items:center;gap:8px;margin:8px 0;font-size:13px;color:#374151;cursor:pointer}
 .modal-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+
+.search-form-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
