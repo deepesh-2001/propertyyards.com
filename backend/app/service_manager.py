@@ -71,6 +71,7 @@ class ServiceManager:
                 ("cashback", self._init_cashback, []),
                 ("rewards", self._init_rewards, []),
                 ("ticket_booking", self._init_ticket_booking, []),
+                ("inventory", self._init_inventory, []),
                 ("deployment", self._init_deployment, []),
                 ("travel_leads", self._init_travel_leads, []),
                 ("cab_booking", self._init_cab_booking, ["settings"]),
@@ -273,6 +274,13 @@ class ServiceManager:
         await ticket_booking.initialize(provider_keys)
         logger.info("Ticket Booking Service initialized")
         return ticket_booking
+
+    async def _init_inventory(self, database, settings):
+        """Initialize inventory management service"""
+        from app.inventory_service import inventory_service
+        await inventory_service.initialize(database)
+        logger.info("Inventory Management Service initialized")
+        return inventory_service
 
     async def _init_deployment(self, database, settings):
         """Initialize deployment service"""
