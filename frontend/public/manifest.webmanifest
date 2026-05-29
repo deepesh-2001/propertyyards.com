@@ -1,0 +1,17 @@
+{
+  "name": "PropertyYards",
+  "short_name": "PropertyYards",
+  "description": "Find, compare and rent verified properties.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/house-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

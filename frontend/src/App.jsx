@@ -22,6 +22,7 @@ import { RentalAgreement } from './components/RentalAgreement'
 import { Chatbot } from './components/Chatbot'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { I18nProvider } from './i18n/I18nContext'
+import { NewsPage } from './components/NewsFeed'
 import './App.css'
 
 function ProtectedRoute({ children, isAuthenticated }) {
@@ -171,6 +172,7 @@ function App() {
           <Route path="/map" element={<MapSearch />} />
           <Route path="/locality" element={<LocalityIndex />} />
           <Route path="/locality/:slug" element={<LocalityDetail />} />
+          <Route path="/news" element={<NewsPage />} />
           <Route
             path="/tenant-verification"
             element={
@@ -272,6 +274,9 @@ function Navigation({ user }) {
           </a>
           <a href="/rental-agreement" className="nav-link">
             Agreement
+          </a>
+          <a href="/news" className="nav-link">
+            News
           </a>
           {user?.role === 'admin' && (
             <>

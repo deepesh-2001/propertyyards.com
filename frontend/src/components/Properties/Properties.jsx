@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { propertyAPI, wishlistAPI } from '../services/api'
+import { propertyAPI, wishlistAPI } from '../../services/api'
 import { FiMapPin, FiBed, FiBath, FiSquare, FiHeart, FiX, FiBarChart2, FiUser } from 'react-icons/fi'
 import { RERABadge } from '../RERABadge'
 import { EMICalculator } from '../EMICalculator'
@@ -7,6 +7,8 @@ import { SiteVisitModal } from '../SiteVisit'
 import { LiveViewers } from '../LiveViewers'
 import { SaveSearchButton } from '../SavedSearches'
 import { PricePrediction } from '../PricePrediction'
+import { VirtualTour } from '../VirtualTour'
+import { SocialShare } from '../SocialShare'
 import { useCompareStore } from '../../stores/compareStore'
 import { FiCalendar } from 'react-icons/fi'
 import './Properties.css'
@@ -187,6 +189,10 @@ function PropertyModal({ property, onClose }) {
           <h2>{property.title}</h2>
           <RERABadge rera_id={property.rera_id} verified={property.verified} size="md" />
           <div style={{ marginTop: 8 }}><LiveViewers propertyId={property.id} /></div>
+          <div style={{ marginTop: 8, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <VirtualTour url={property.virtual_tour_url} title={property.title} />
+            <SocialShare title={property.title} text={`${property.title} — $${property.price?.toLocaleString?.() || ''}`} />
+          </div>
           <p className="price">${property.price.toLocaleString()}</p>
           <p className="location">
             <FiMapPin /> {property.location}, {property.city}, {property.state}
@@ -277,7 +283,7 @@ function InquiryForm({ propertyId, onClose }) {
     setIsLoading(true)
 
     try {
-      const { inquiryAPI } = await import('../services/api')
+      const { inquiryAPI } = await import('../../services/api')
       await inquiryAPI.createInquiry({
         property_id: propertyId,
         message
