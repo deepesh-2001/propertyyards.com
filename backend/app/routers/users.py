@@ -1,7 +1,7 @@
 """
 User profile routes
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.database import get_db
@@ -33,7 +33,7 @@ def get_current_user(token: str = None) -> dict:
 @router.get("/me", response_model=UserProfileResponse)
 @require_feature_flag("user_management")
 async def get_current_user_profile(
-    authorization: str = None,
+    authorization: str = Header(None),
     db: Session = Depends(get_db)
 ):
     """Get current user profile"""
@@ -88,7 +88,7 @@ async def get_current_user_profile(
 @require_feature_flag("user_management")
 async def update_current_user_profile(
     user_update: UserUpdate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db: Session = Depends(get_db)
 ):
     """Update current user profile"""

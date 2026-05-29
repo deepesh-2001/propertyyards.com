@@ -2,7 +2,7 @@
 Monitoring Router
 Endpoints for database info, observer, and server information
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from app.database import get_database
 from app.db_info import DatabaseInfo
 from app.observer import Observer, MetricType, AlertSeverity
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/monitoring", tags=["Monitoring"])
 
 
-def get_current_user(authorization: str = None) -> dict:
+def get_current_user(authorization: str = Header(None)) -> dict:
     """Extract current user from authorization header"""
     if not authorization:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -129,7 +129,7 @@ async def get_all_server_info():
 @router.post("/metrics")
 async def record_metric(
     metric: MetricRecord,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Record a metric"""
@@ -152,7 +152,7 @@ async def get_metrics(
     start_time: str = None,
     end_time: str = None,
     limit: int = 100,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get metrics with filters"""
@@ -195,7 +195,7 @@ async def get_metric_summary(
     metric_type: str,
     start_time: str = None,
     end_time: str = None,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get metric summary statistics"""
@@ -234,7 +234,7 @@ async def get_metric_summary(
 @router.post("/alerts")
 async def create_alert(
     alert: AlertCreate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Create an alert"""
@@ -257,7 +257,7 @@ async def get_alerts(
     severity: str = None,
     resolved: bool = None,
     limit: int = 50,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get alerts with filters"""
@@ -283,7 +283,7 @@ async def get_alerts(
 @router.put("/alerts/{alert_id}/resolve")
 async def resolve_alert(
     alert_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Resolve an alert"""
@@ -316,7 +316,7 @@ async def get_logs(
     start_time: str = None,
     end_time: str = None,
     limit: int = 100,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get system logs with filters"""

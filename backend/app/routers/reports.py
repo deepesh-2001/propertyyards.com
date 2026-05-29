@@ -2,7 +2,7 @@
 Reports Router
 Endpoints for generating and downloading Excel reports
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from fastapi.responses import Response, StreamingResponse
 from app.database import get_database, get_db
 from app.reports import ReportGenerator, ReportType
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/reports", tags=["Reports"])
 
 
-def get_current_user(authorization: str = None) -> dict:
+def get_current_user(authorization: str = Header(None)) -> dict:
     """Extract current user from authorization header"""
     if not authorization:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -37,7 +37,7 @@ def get_current_user(authorization: str = None) -> dict:
 @router.get("/daily-summary")
 async def get_daily_summary_report(
     date: str = None,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Generate daily summary report as Excel"""
@@ -70,7 +70,7 @@ async def get_daily_summary_report(
 async def get_property_listings_report(
     start_date: str = None,
     end_date: str = None,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Generate property listings report as Excel"""
@@ -111,7 +111,7 @@ async def get_property_listings_report(
 async def get_user_activity_report(
     start_date: str = None,
     end_date: str = None,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Generate user activity report as Excel"""
@@ -152,7 +152,7 @@ async def get_user_activity_report(
 async def get_inquiries_report(
     start_date: str = None,
     end_date: str = None,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Generate inquiries report as Excel"""
@@ -193,7 +193,7 @@ async def get_inquiries_report(
 async def get_leads_report(
     start_date: str = None,
     end_date: str = None,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Generate CRM leads report as Excel"""
@@ -234,7 +234,7 @@ async def get_leads_report(
 async def get_broker_performance_report(
     start_date: str = None,
     end_date: str = None,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Generate broker performance report as Excel"""
@@ -275,7 +275,7 @@ async def get_broker_performance_report(
 async def get_rental_report(
     start_date: str = None,
     end_date: str = None,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Generate rental properties report as Excel"""
@@ -317,7 +317,7 @@ async def collect_info(
     info_type: str,
     data: dict,
     source: str = "manual",
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Collect and store user information"""
@@ -343,7 +343,7 @@ async def collect_info(
 @router.get("/info")
 async def get_user_info(
     info_type: str = None,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get collected information for current user"""
@@ -365,7 +365,7 @@ async def get_user_info(
 
 @router.get("/info/summary")
 async def get_info_summary(
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get summary statistics of collected information"""
@@ -637,7 +637,7 @@ async def get_sales_report(
     sale_type: str = None,
     status: str = None,
     format: str = "csv",
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Generate sales records report"""
@@ -694,7 +694,7 @@ async def get_projections_report(
     location: str = None,
     date_range_days: int = 90,
     format: str = "csv",
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Generate projections and forecasts report"""
@@ -731,7 +731,7 @@ async def get_future_growth_report(
     location: str = None,
     time_horizon_years: int = None,
     format: str = "csv",
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Generate future growth analysis report"""
@@ -769,7 +769,7 @@ async def get_future_projects_report(
     project_type: str = None,
     construction_status: str = None,
     format: str = "csv",
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Generate future/upcoming projects report"""
@@ -807,7 +807,7 @@ async def get_investment_opportunities_report(
     risk_level: str = None,
     status: str = "open",
     format: str = "csv",
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Generate investment opportunities report"""
@@ -842,7 +842,7 @@ async def get_investment_opportunities_report(
 @router.post("/ai-projection")
 async def generate_ai_projection(
     request: dict,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Generate AI-powered market projection for a location"""

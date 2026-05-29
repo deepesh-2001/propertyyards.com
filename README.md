@@ -61,6 +61,14 @@ http://localhost/docs   # Swagger UI (dev only)
 - AI-generated news articles & property descriptions
 - WhatsApp notifications
 
+### 🖥️ Frontend Buyer Experience (React + Vite)
+- **Listings UX:** RERA/Verified badges, EMI calculator, compare up to 4 properties, owner-only (no-broker) filter
+- **Lead conversion:** site-visit booking, saved searches with email/WhatsApp alerts, live "viewers now" counter
+- **Discovery:** Leaflet map search, locality pages, 1-year price prediction widget
+- **Trust & utilities:** tenant verification flow, rental agreement generator + e-sign, i18n (English/Hindi/Tamil), floating chatbot
+- **Polish:** installable PWA (offline service worker), 360° virtual tour, social share, real-estate news feed
+- All buyer features **degrade gracefully** to mock data when their backend route is unavailable
+
 ### 🎨 Interactive Tools
 - Whiteboard canvas — floor plans, property layouts (save/export)
 - Referral program — public form, commission tracking, analytics dashboard (PDF/Excel/JSON)
@@ -149,7 +157,18 @@ For local development, create a `.env` file in `backend/`:
 ```bash
 DATABASE_URL=mongodb://localhost:27017/housing_db
 REDIS_URL=redis://localhost:6379
-JWT_SECRET_KEY=your-secret-key-change-in-production
+JWT_SECRET_KEY=your-secret-key-change-in-production   # MUST be changed in production
+```
+
+### Frontend (`frontend/.env`)
+
+The React app derives its API origin from `src/config/api.js`:
+- **Development:** uses a relative base URL so requests go through the Vite dev proxy (`/api` → `http://localhost:8000`, see `vite.config.js`).
+- **Production:** set `VITE_API_BASE_URL` to the backend **origin only** (no trailing `/api`). All endpoint paths already include `/api`.
+
+```bash
+# frontend/.env (production builds, e.g. Vercel project env)
+VITE_API_BASE_URL=https://api.propertyyards.com
 ```
 
 ### AI & Integrations

@@ -1,7 +1,7 @@
 """
 Property listing routes
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_
 from app.database import get_db
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/properties", tags=["Properties"])
 
 
-def get_current_user_from_header(authorization: str = None) -> dict:
+def get_current_user_from_header(authorization: str = Header(None)) -> dict:
     """Extract current user from authorization header"""
     if not authorization:
         return None
@@ -46,7 +46,7 @@ def get_current_user_from_header(authorization: str = None) -> dict:
 @require_feature_flag("property_management")
 async def create_property(
     property_data: PropertyCreate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db: Session = Depends(get_db)
 ):
     """Create a new property listing"""
@@ -242,7 +242,7 @@ async def get_property(property_id: str, db: Session = Depends(get_db)):
 async def update_property(
     property_id: str,
     property_update: PropertyUpdate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db: Session = Depends(get_db)
 ):
     """Update property listing"""
@@ -282,7 +282,7 @@ async def update_property(
 @require_feature_flag("property_management")
 async def delete_property(
     property_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db: Session = Depends(get_db)
 ):
     """Delete property listing"""
@@ -316,7 +316,7 @@ async def delete_property(
 @require_feature_flag("property_wishlist")
 async def add_to_wishlist(
     property_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db: Session = Depends(get_db)
 ):
     """Add property to wishlist"""
@@ -358,7 +358,7 @@ async def add_to_wishlist(
 @require_feature_flag("property_wishlist")
 async def remove_from_wishlist(
     property_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db: Session = Depends(get_db)
 ):
     """Remove property from wishlist"""

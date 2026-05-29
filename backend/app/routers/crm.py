@@ -2,7 +2,7 @@
 CRM Router
 Endpoints for CRM integration
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from app.database import get_database
 from app.crm import CRMIntegration, LeadStatus, LeadSource, InteractionType
 from app.schemas import (
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/crm", tags=["CRM"])
 
 
-def get_current_user(authorization: str = None) -> dict:
+def get_current_user(authorization: str = Header(None)) -> dict:
     """Extract current user from authorization header"""
     if not authorization:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -38,7 +38,7 @@ def get_current_user(authorization: str = None) -> dict:
 @require_feature_flag("crm_system")
 async def create_lead(
     lead_data: LeadCreate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Create a new CRM lead"""
@@ -55,7 +55,7 @@ async def create_lead(
 @require_feature_flag("crm_system")
 async def get_lead(
     lead_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get a specific lead"""
@@ -75,7 +75,7 @@ async def get_lead(
 async def update_lead(
     lead_id: str,
     lead_update: LeadUpdate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Update a lead"""
@@ -95,7 +95,7 @@ async def update_lead(
 @require_feature_flag("crm_system")
 async def delete_lead(
     lead_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Delete a lead"""
@@ -118,7 +118,7 @@ async def list_leads(
     assigned_to: str = None,
     page: int = 1,
     limit: int = 50,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """List leads with filters"""
@@ -158,7 +158,7 @@ async def list_leads(
 async def add_interaction(
     lead_id: str,
     interaction: InteractionCreate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Add an interaction to a lead"""
@@ -183,7 +183,7 @@ async def add_interaction(
 async def update_lead_status(
     lead_id: str,
     status: LeadStatus,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Update lead status in pipeline"""
@@ -201,7 +201,7 @@ async def update_lead_status(
 @router.get("/pipeline/summary", response_model=PipelineSummary)
 @require_feature_flag("crm_pipeline")
 async def get_pipeline_summary(
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get CRM pipeline summary"""
@@ -218,7 +218,7 @@ async def get_pipeline_summary(
 async def get_user_activities(
     page: int = 1,
     limit: int = 50,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get CRM activities for current user"""

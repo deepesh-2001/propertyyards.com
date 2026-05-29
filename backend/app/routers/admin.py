@@ -1,7 +1,7 @@
 """
 Admin routes
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from app.database import get_database
 from app.models import AuditLog
 from app.schemas import AdminStats, UserStats, PropertyStats, UserResponse, PropertyResponse
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
 
-def get_current_admin(authorization: str = None) -> dict:
+def get_current_admin(authorization: str = Header(None)) -> dict:
     """Get current admin user"""
     if not authorization:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -31,7 +31,7 @@ def get_current_admin(authorization: str = None) -> dict:
 
 @router.get("/analytics", response_model=AdminStats)
 async def get_analytics(
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get platform analytics"""
@@ -93,7 +93,7 @@ async def get_all_users(
     page: int = 1,
     limit: int = 50,
     role: str = None,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get all users (admin only)"""
@@ -125,7 +125,7 @@ async def get_all_properties(
     page: int = 1,
     limit: int = 50,
     status: str = None,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get all properties (admin only)"""
@@ -155,7 +155,7 @@ async def get_all_properties(
 @router.post("/properties/{property_id}/approve")
 async def approve_property(
     property_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Approve a property listing"""
@@ -191,7 +191,7 @@ async def approve_property(
 async def reject_property(
     property_id: str,
     reason: str = None,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Reject a property listing"""
@@ -226,7 +226,7 @@ async def reject_property(
 @router.delete("/users/{user_id}")
 async def delete_user(
     user_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Delete a user (admin only)"""
@@ -262,7 +262,7 @@ async def delete_user(
 @router.post("/users/{user_id}/deactivate")
 async def deactivate_user(
     user_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Deactivate a user"""
@@ -295,7 +295,7 @@ async def get_audit_logs(
     page: int = 1,
     limit: int = 50,
     action: str = None,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get audit logs"""

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/chatbot", tags=["Chat Bot"])
 
 
-def get_current_user(authorization: str = None) -> dict:
+def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
     """Extract current user from authorization header"""
     if not authorization:
         raise HTTPException(status_code=401, detail="Not authenticated")

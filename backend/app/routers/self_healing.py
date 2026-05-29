@@ -2,7 +2,7 @@
 Self-Healing Property Router
 Endpoints for smart property monitoring and self-healing
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from app.database import get_database
 from app.self_healing import SelfHealingProperty
 from app.schemas import (
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/self-healing", tags=["Self-Healing"])
 
 
-def get_current_user(authorization: str = None) -> dict:
+def get_current_user(authorization: str = Header(None)) -> dict:
     """Extract current user from authorization header"""
     if not authorization:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -38,7 +38,7 @@ def get_current_user(authorization: str = None) -> dict:
 @router.post("/sensors", response_model=SensorResponse)
 async def register_sensor(
     sensor_data: SensorCreate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Register a sensor for a property"""
@@ -83,7 +83,7 @@ async def record_sensor_reading(
 @router.get("/sensors/{sensor_id}", response_model=SensorResponse)
 async def get_sensor(
     sensor_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get sensor by ID"""
@@ -104,7 +104,7 @@ async def get_sensor(
 @router.get("/properties/{property_id}/sensors")
 async def get_property_sensors(
     property_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get all sensors for a property"""
@@ -127,7 +127,7 @@ async def get_property_issues(
     property_id: str,
     status: str = None,
     severity: str = None,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get issues for a property"""
@@ -147,7 +147,7 @@ async def get_property_issues(
 async def resolve_issue(
     issue_id: str,
     resolution_notes: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Resolve an issue"""
@@ -166,7 +166,7 @@ async def resolve_issue(
 @router.get("/properties/{property_id}/health", response_model=PropertyHealthScore)
 async def get_property_health_score(
     property_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get property health score"""
@@ -181,7 +181,7 @@ async def get_property_health_score(
 @router.get("/properties/{property_id}/maintenance-logs")
 async def get_maintenance_logs(
     property_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get maintenance logs for a property"""

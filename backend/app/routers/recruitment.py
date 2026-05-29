@@ -2,7 +2,7 @@
 Recruitment Router
 Endpoints for job postings, applications, and salary management
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from app.database import get_database
 from app.recruitment import Recruitment, SalaryManagement, EmployeeReferral
 from app.schemas import (
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/recruitment", tags=["Recruitment"])
 
 
-def get_current_user(authorization: str = None) -> dict:
+def get_current_user(authorization: str = Header(None)) -> dict:
     """Extract current user from authorization header"""
     if not authorization:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -42,7 +42,7 @@ def get_current_user(authorization: str = None) -> dict:
 @router.post("/jobs", response_model=JobPostingResponse)
 async def create_job_posting(
     job_data: JobPostingCreate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Create a new job posting with cache invalidation"""
@@ -80,7 +80,7 @@ async def create_job_posting(
 @router.get("/jobs/{job_id}", response_model=JobPostingResponse)
 async def get_job_posting(
     job_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get job posting by ID with caching"""
@@ -119,7 +119,7 @@ async def list_job_postings(
     employment_type: str = None,
     page: int = 1,
     limit: int = 50,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """List job postings with filters and caching"""
@@ -152,7 +152,7 @@ async def list_job_postings(
 async def update_job_posting(
     job_id: str,
     job_update: JobPostingUpdate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Update job posting"""
@@ -175,7 +175,7 @@ async def update_job_posting(
 @router.delete("/jobs/{job_id}")
 async def delete_job_posting(
     job_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Delete job posting"""
@@ -221,7 +221,7 @@ async def submit_application(
 @router.get("/applications/{application_id}", response_model=JobApplicationResponse)
 async def get_application(
     application_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get application by ID"""
@@ -242,7 +242,7 @@ async def list_applications(
     status: str = None,
     page: int = 1,
     limit: int = 50,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """List applications with filters"""
@@ -266,7 +266,7 @@ async def list_applications(
 async def update_application_status(
     application_id: str,
     application_update: JobApplicationUpdate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Update application status"""
@@ -292,7 +292,7 @@ async def update_application_status(
 @router.post("/salaries", response_model=SalaryStructureResponse)
 async def create_salary_structure(
     salary_data: SalaryStructureCreate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Create salary structure for employee"""
@@ -317,7 +317,7 @@ async def create_salary_structure(
 @router.get("/salaries/{employee_id}/net", response_model=NetSalaryResponse)
 async def calculate_net_salary(
     employee_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Calculate net salary for employee"""
@@ -339,7 +339,7 @@ async def calculate_net_salary(
 async def update_salary(
     employee_id: str,
     salary_update: SalaryStructureUpdate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Update salary structure"""
@@ -369,7 +369,7 @@ async def update_salary(
 @router.post("/referrals", response_model=EmployeeReferralResponse)
 async def create_employee_referral(
     referral_data: EmployeeReferralCreate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Create employee referral"""
@@ -395,7 +395,7 @@ async def get_referrals(
     status: str = None,
     page: int = 1,
     limit: int = 50,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get referrals with filters"""
@@ -419,7 +419,7 @@ async def get_referrals(
 async def update_referral_status(
     referral_id: str,
     referral_update: EmployeeReferralUpdate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Update referral status"""

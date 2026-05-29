@@ -2,7 +2,7 @@
 Broker Router
 Endpoints for broker management
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from app.database import get_database
 from app.schemas import BrokerCreate, BrokerUpdate, BrokerResponse, PaginatedResponse
 from app.auth import decode_token
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/brokers", tags=["Brokers"])
 
 
-def get_current_user(authorization: str = None) -> dict:
+def get_current_user(authorization: str = Header(None)) -> dict:
     """Extract current user from authorization header"""
     if not authorization:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -33,7 +33,7 @@ def get_current_user(authorization: str = None) -> dict:
 @router.post("/", response_model=BrokerResponse)
 async def create_broker(
     broker_data: BrokerCreate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Create a new broker profile"""
@@ -61,7 +61,7 @@ async def create_broker(
 @router.get("/{broker_id}", response_model=BrokerResponse)
 async def get_broker(
     broker_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get broker by ID"""
@@ -80,7 +80,7 @@ async def get_broker(
 @router.get("/user/{user_id}", response_model=BrokerResponse)
 async def get_broker_by_user(
     user_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get broker profile by user ID"""
@@ -100,7 +100,7 @@ async def get_broker_by_user(
 async def update_broker(
     broker_id: str,
     broker_update: BrokerUpdate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Update broker profile"""
@@ -129,7 +129,7 @@ async def update_broker(
 @router.delete("/{broker_id}")
 async def delete_broker(
     broker_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Delete broker profile"""
@@ -156,7 +156,7 @@ async def list_brokers(
     is_active: bool = None,
     page: int = 1,
     limit: int = 50,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """List brokers with filters"""
@@ -194,7 +194,7 @@ async def list_brokers(
 @router.put("/{broker_id}/verify")
 async def verify_broker(
     broker_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Verify broker (admin only)"""
@@ -219,7 +219,7 @@ async def verify_broker(
 async def update_broker_rating(
     broker_id: str,
     rating: float,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Update broker rating"""

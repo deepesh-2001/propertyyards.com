@@ -1,7 +1,7 @@
 """
 Property inquiry routes
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.database import get_db
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/inquiries", tags=["Inquiries"])
 
 
-def get_current_user_from_header(authorization: str = None) -> dict:
+def get_current_user_from_header(authorization: str = Header(None)) -> dict:
     """Extract current user from authorization header"""
     if not authorization:
         return None
@@ -35,7 +35,7 @@ def get_current_user_from_header(authorization: str = None) -> dict:
 @router.post("", response_model=InquiryResponse)
 async def create_inquiry(
     inquiry_data: InquiryCreate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db: Session = Depends(get_db)
 ):
     """Create a new inquiry for a property"""
@@ -68,7 +68,7 @@ async def create_inquiry(
 async def get_user_inquiries(
     page: int = 1,
     limit: int = 20,
-    authorization: str = None,
+    authorization: str = Header(None),
     db: Session = Depends(get_db)
 ):
     """Get current user's inquiries"""
@@ -105,7 +105,7 @@ async def get_user_inquiries(
 @router.get("/{inquiry_id}", response_model=InquiryResponse)
 async def get_inquiry(
     inquiry_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db: Session = Depends(get_db)
 ):
     """Get inquiry details"""
@@ -130,7 +130,7 @@ async def get_inquiry(
 async def update_inquiry(
     inquiry_id: str,
     inquiry_update: InquiryUpdate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db: Session = Depends(get_db)
 ):
     """Update inquiry"""
@@ -168,7 +168,7 @@ async def update_inquiry(
 @router.delete("/{inquiry_id}")
 async def delete_inquiry(
     inquiry_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db: Session = Depends(get_db)
 ):
     """Delete inquiry"""
@@ -198,7 +198,7 @@ async def get_property_inquiries(
     property_id: str,
     page: int = 1,
     limit: int = 20,
-    authorization: str = None,
+    authorization: str = Header(None),
     db: Session = Depends(get_db)
 ):
     """Get all inquiries for a property (property owner only)"""

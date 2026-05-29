@@ -2,7 +2,7 @@
 Access Control Router
 Endpoints for access control and permissions
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from app.database import get_database
 from app.access import AccessControl, Permission, ResourceType, AccessLevel
 from app.schemas import (
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/access", tags=["Access Control"])
 
 
-def get_current_user(authorization: str = None) -> dict:
+def get_current_user(authorization: str = Header(None)) -> dict:
     """Extract current user from authorization header"""
     if not authorization:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -43,7 +43,7 @@ def require_admin(current_user: dict) -> dict:
 @router.post("/roles", response_model=RoleResponse)
 async def create_role(
     role_data: RoleCreate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Create a custom role"""
@@ -64,7 +64,7 @@ async def create_role(
 @router.get("/roles/{role_name}", response_model=RoleResponse)
 async def get_role(
     role_name: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get role by name"""
@@ -83,7 +83,7 @@ async def get_role(
 async def update_role_permissions(
     role_name: str,
     role_update: RoleUpdate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Update role permissions"""
@@ -103,7 +103,7 @@ async def update_role_permissions(
 @router.delete("/roles/{role_name}")
 async def delete_role(
     role_name: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Delete a custom role"""
@@ -123,7 +123,7 @@ async def delete_role(
 async def assign_role_to_user(
     user_id: str,
     role_name: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Assign role to user"""
@@ -142,7 +142,7 @@ async def assign_role_to_user(
 @router.post("/permissions/check", response_model=PermissionCheckResponse)
 async def check_permission(
     permission_check: PermissionCheck,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Check if user has specific permission"""
@@ -160,7 +160,7 @@ async def check_permission(
 @router.post("/acl", response_model=ACLResponse)
 async def create_acl(
     acl_data: ACLCreate,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Create access control list entry"""
@@ -186,7 +186,7 @@ async def create_acl(
 async def get_resource_acl(
     resource_type: ResourceType,
     resource_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get all ACL entries for a resource"""
@@ -204,7 +204,7 @@ async def grant_resource_access(
     resource_id: str,
     user_id: str,
     access_level: AccessLevel,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Grant or update access to a resource"""
@@ -227,7 +227,7 @@ async def revoke_resource_access(
     resource_type: ResourceType,
     resource_id: str,
     user_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Revoke access to a resource"""
@@ -250,7 +250,7 @@ async def revoke_resource_access(
 @router.get("/users/{user_id}/permissions")
 async def get_user_permissions(
     user_id: str,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get all permissions for a user"""
@@ -267,7 +267,7 @@ async def get_user_resources(
     user_id: str,
     resource_type: ResourceType,
     access_level: AccessLevel = AccessLevel.READ,
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Get all resources of a type that user has access to"""
@@ -281,7 +281,7 @@ async def get_user_resources(
 
 @router.post("/initialize")
 async def initialize_default_roles(
-    authorization: str = None,
+    authorization: str = Header(None),
     db = Depends(get_database)
 ):
     """Initialize default roles in database"""
