@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import PropertyCard, { PropertyCardSkeleton } from '../components/PropertyCard'
+import SearchBar from '../components/SearchBar'
 import { propertiesAPI } from '../services/api'
 import { TEST_PROPERTIES } from '../data/testData'
 import { useLang } from '../context/LangContext'
@@ -8,23 +9,26 @@ import { useBreakpoint } from '../hooks/useBreakpoint'
 import { useTimeGreeting } from '../hooks/useTimeGreeting'
 
 const CITIES = ['All', 'Gurgaon', 'Noida', 'Delhi', 'Greater Noida', 'Faridabad', 'Mumbai', 'Bangalore', 'Hyderabad', 'Pune']
-const TYPES  = ['All', 'apartment', 'villa', 'house', 'plot', 'commercial', 'studio']
 
 export default function Home() {
   const { tr } = useLang()
   const { isMobile, isTablet } = useBreakpoint()
   const greetKey = useTimeGreeting()
   const cols = isMobile ? '1fr' : isTablet ? 'repeat(2,1fr)' : 'repeat(auto-fill,minmax(300px,1fr))'
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const [properties, setProperties] = useState([])
-  const [loading, setLoading]         = useState(true)
-  const [search, setSearch]           = useState('')
-  const [city, setCity]               = useState('All')
-  const [propType, setPropType]       = useState('All')
-  const [listingType, setListingType] = useState(searchParams.get('type') || 'all')
-  const [minPrice, setMinPrice]       = useState('')
-  const [maxPrice, setMaxPrice]       = useState('')
-  const [beds, setBeds]               = useState('Any')
+  const [loading, setLoading]       = useState(true)
+  const [filters, setFilters]       = useState({
+    search:      '',
+    city:        'All',
+    propType:    'All',
+    listingType: searchParams.get('type') || 'all',
+    minPrice:    '',
+    maxPrice:    '',
+    beds:        'Any',
+  })
+
+  const updateFilters = (partial) => setFilters(prev => ({ ...prev, ...partial }))
 
   useEffect(() => {
     propertiesAPI.list({ limit: 100 })
@@ -33,10 +37,13 @@ export default function Home() {
       .finally(() => setLoading(false))
   }, [])
 
+  const { search, city, propType, listingType, minPrice, maxPrice, beds } = filters
+
   const filtered = properties.filter(p => {
     if (search && !p.title?.toLowerCase().includes(search.toLowerCase()) &&
         !p.city?.toLowerCase().includes(search.toLowerCase()) &&
-        !p.location?.toLowerCase().includes(search.toLowerCase())) return false
+        !p.location?.toLowerCase().includes(search.toLowerCase()) &&
+        !p.property_type?.toLowerCase().includes(search.toLowerCase())) return false
     if (city !== 'All' && p.city !== city) return false
     if (propType !== 'All' && p.property_type !== propType) return false
     if (listingType !== 'all' && p.listing_type !== listingType) return false
@@ -59,33 +66,11 @@ export default function Home() {
         <h1 style={s.heroH1}>{tr('heroTitle')}</h1>
         <p style={s.heroP}>{tr('heroSub')}</p>
 
-        <div style={s.searchBar}>
-          <input
-            placeholder={tr('searchPlaceholder')}
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={s.searchInput}
-          />
-          <div style={s.filterRow}>
-            <select value={listingType} onChange={e => setListingType(e.target.value)} style={s.sel}>
-              <option value="all">{tr('buyRent')}</option>
-              <option value="sale">{tr('buy')}</option>
-              <option value="rent">{tr('rent')}</option>
-            </select>
-            <select value={propType} onChange={e => setPropType(e.target.value)} style={s.sel}>
-              {TYPES.map(t => <option key={t} value={t}>{t === 'All' ? tr('allTypes') : t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
-            </select>
-            <select value={beds} onChange={e => setBeds(e.target.value)} style={s.sel}>
-              {['Any','1','2','3','4','5'].map(b => <option key={b} value={b}>{b === 'Any' ? tr('anyBeds') : `${b} ${tr('bhk')}`}</option>)}
-            </select>
-            <input placeholder={tr('minPrice')} type="number" value={minPrice} onChange={e => setMinPrice(e.target.value)} style={{ ...s.sel, width: 120 }} />
-            <input placeholder={tr('maxPrice')} type="number" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} style={{ ...s.sel, width: 120 }} />
-          </div>
-        </div>
+        <SearchBar filters={filters} onChange={updateFilters} />
 
         <div style={s.cityPills}>
           {CITIES.map(c => (
-            <button key={c} onClick={() => setCity(c)}
+            <button key={c} onClick={() => updateFilters({ city: c })}
               style={{ ...s.pill, ...(city === c ? s.pillActive : {}) }}>{c}</button>
           ))}
         </div>
@@ -144,10 +129,6 @@ const s = {
   greetBadge: { display: 'inline-block', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 20, padding: '4px 16px', fontSize: 13, fontWeight: 600, marginBottom: 16, backdropFilter: 'blur(4px)' },
   heroH1:      { fontSize: 'clamp(28px, 5vw, 46px)', fontWeight: 900, margin: '0 0 0.75rem', letterSpacing: '-1.5px', lineHeight: 1.1 },
   heroP:       { fontSize: 18, opacity: 0.85, margin: '0 0 2rem' },
-  searchBar:   { background: '#fff', borderRadius: 14, padding: '16px 20px', maxWidth: 860, margin: '0 auto 1.5rem', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' },
-  searchInput: { width: '100%', border: 'none', outline: 'none', fontSize: 16, padding: '6px 0', borderBottom: '2px solid #e5e7eb', marginBottom: 12, boxSizing: 'border-box' },
-  filterRow:   { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  sel:         { border: '1px solid #d1d5db', borderRadius: 8, padding: '7px 10px', fontSize: 13, color: '#374151', background: '#f9fafb', flex: 1, minWidth: 90, outline: 'none' },
   cityPills:   { display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' },
   pill:        { background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.25)', color: '#fff', padding: '6px 18px', borderRadius: 20, fontSize: 14, cursor: 'pointer' },
   pillActive:  { background: '#fff', color: '#1a56db', fontWeight: 700 },
