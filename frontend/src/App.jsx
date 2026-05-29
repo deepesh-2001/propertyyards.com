@@ -15,6 +15,8 @@ import { TestCenter } from './components/TestCenter'
 import { AlertCenter, AlertContainer } from './components/AlertCenter'
 import { CompareBar, ComparePage } from './components/Compare'
 import { SavedSearchesPage } from './components/SavedSearches'
+import { MapSearch } from './components/MapSearch'
+import { LocalityIndex, LocalityDetail } from './components/Locality'
 import './App.css'
 
 function ProtectedRoute({ children, isAuthenticated }) {
@@ -159,6 +161,9 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/map" element={<MapSearch />} />
+          <Route path="/locality" element={<LocalityIndex />} />
+          <Route path="/locality/:slug" element={<LocalityDetail />} />
 
           {/* Default Route */}
           <Route
@@ -231,6 +236,12 @@ function Navigation({ user }) {
           </a>
           <a href="/saved-searches" className="nav-link">
             Saved
+          </a>
+          <a href="/map" className="nav-link">
+            Map
+          </a>
+          <a href="/locality" className="nav-link">
+            Localities
           </a>
           {user?.role === 'admin' && (
             <>

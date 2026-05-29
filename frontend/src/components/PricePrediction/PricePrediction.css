@@ -1,0 +1,30 @@
+.pp-card {
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+  padding: 14px 16px;
+}
+.pp-header {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 10px;
+}
+.pp-header h3 { margin: 0; font-size: 15px; flex: 1; }
+.pp-horizon {
+  background: #f3f4f6; color: #6b7280;
+  font-size: 11px; padding: 2px 8px; border-radius: 999px;
+}
+.pp-body {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px;
+}
+.pp-label { display: block; font-size: 11px; color: #6b7280; }
+.pp-value { display: block; font-size: 15px; font-weight: 600; color: #111827; }
+.pp-arrow {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 10px; border-radius: 999px;
+  font-weight: 600; font-size: 13px;
+}
+.pp-arrow.up { background: #ecfdf5; color: #047857; }
+.pp-arrow.down { background: #fef2f2; color: #b91c1c; }
+.pp-footer {
+  margin-top: 10px; font-size: 11px; color: #6b7280;
+  border-top: 1px dashed #e5e7eb; padding-top: 8px;
+}
+.pp-mock { color: #9ca3af; }

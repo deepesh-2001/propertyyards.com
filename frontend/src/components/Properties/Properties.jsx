@@ -6,6 +6,7 @@ import { EMICalculator } from '../EMICalculator'
 import { SiteVisitModal } from '../SiteVisit'
 import { LiveViewers } from '../LiveViewers'
 import { SaveSearchButton } from '../SavedSearches'
+import { PricePrediction } from '../PricePrediction'
 import { useCompareStore } from '../../stores/compareStore'
 import { FiCalendar } from 'react-icons/fi'
 import './Properties.css'
@@ -250,6 +251,10 @@ function PropertyModal({ property, onClose }) {
               <EMICalculator price={property.price || 5000000} />
             </div>
           )}
+
+          <div style={{ marginTop: 16 }}>
+            <PricePrediction property={property} />
+          </div>
         </div>
 
         {isInquiryOpen && (

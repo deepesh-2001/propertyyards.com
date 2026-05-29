@@ -1,0 +1,6 @@
+.map-search-page { padding: 20px; }
+.map-search-header { max-width: 1200px; margin: 0 auto 12px; }
+.map-search-header h1 { margin: 0 0 4px; }
+.map-search-header p { color: #6b7280; margin: 0; }
+.map-search-container { max-width: 1200px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; }
+.leaflet-container { font-family: inherit; }
