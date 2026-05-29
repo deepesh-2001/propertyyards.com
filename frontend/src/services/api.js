@@ -34,6 +34,16 @@ api.interceptors.response.use(
   }
 )
 
+// Helpers for components that use raw fetch (e.g. file uploads, WebSockets,
+// streaming). Build a fully-qualified URL against the configured origin and
+// attach the bearer token when present.
+export const apiUrl = (path) => `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`
+
+export const authHeaders = () => {
+  const token = localStorage.getItem('access_token')
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 // Authentication endpoints
 export const authAPI = {
   register: (data) => api.post('/api/auth/register', data),

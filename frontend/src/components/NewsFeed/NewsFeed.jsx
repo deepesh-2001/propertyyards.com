@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { FiRss, FiExternalLink } from 'react-icons/fi'
+import { apiUrl } from '../../services/api'
 import './NewsFeed.css'
 
 const MOCK = [
@@ -19,12 +20,24 @@ export function NewsFeed({ limit = 5, compact = false }) {
 
   useEffect(() => {
     let cancelled = false
-    fetch('/api/news?category=real-estate')
+    fetch(apiUrl(`/api/news/articles?limit=${limit}`))
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data) => !cancelled && setItems(Array.isArray(data) ? data : data.items || []))
+      .then((data) => {
+        if (cancelled) return
+        const articles = Array.isArray(data) ? data : data.articles || data.items || []
+        // Normalize backend article shape -> feed item shape.
+        const normalized = articles.map((a) => ({
+          id: a.id,
+          title: a.title,
+          source: a.author || a.source || a.category || 'PropertyYards',
+          url: a.url || `/news/${a.id}`,
+          publishedAt: a.published_at || a.publishedAt || new Date().toISOString(),
+        }))
+        setItems(normalized.length ? normalized : MOCK)
+      })
       .catch(() => !cancelled && setItems(MOCK))
     return () => { cancelled = true }
-  }, [])
+  }, [limit])
 
   const list = items.slice(0, limit)
 

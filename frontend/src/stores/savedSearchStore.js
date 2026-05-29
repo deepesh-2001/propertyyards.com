@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { apiUrl, authHeaders } from '../services/api'
 
 export const useSavedSearchStore = create(
   persist(
@@ -15,21 +16,18 @@ export const useSavedSearchStore = create(
         }
         set({ searches: [item, ...get().searches] })
         // best-effort sync to backend
-        fetch('/api/saved-searches', {
+        fetch(apiUrl('/api/saved-searches'), {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('access_token') || ''}`,
-          },
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
           body: JSON.stringify(item),
         }).catch(() => null)
         return item
       },
       remove: (id) => {
         set({ searches: get().searches.filter((s) => s.id !== id) })
-        fetch(`/api/saved-searches/${id}`, {
+        fetch(apiUrl(`/api/saved-searches/${id}`), {
           method: 'DELETE',
-          headers: { Authorization: `Bearer ${localStorage.getItem('access_token') || ''}` },
+          headers: { ...authHeaders() },
         }).catch(() => null)
       },
       updateAlerts: (id, alerts) => {

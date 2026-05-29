@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { FiShield, FiCheck, FiUpload, FiFileText, FiUser } from 'react-icons/fi'
+import { apiUrl, authHeaders } from '../../services/api'
 import './TenantVerification.css'
 
 const STEPS = [
@@ -19,9 +20,9 @@ export function TenantVerification() {
     const fd = new FormData()
     fd.append('document', file)
     fd.append('type', id)
-    fetch('/api/tenant-verification/upload', {
+    fetch(apiUrl('/api/tenant-verification/upload'), {
       method: 'POST',
-      headers: { Authorization: `Bearer ${localStorage.getItem('access_token') || ''}` },
+      headers: { ...authHeaders() },
       body: fd,
     }).catch(() => null)
     setTimeout(() => setDone((d) => ({ ...d, [id]: true })), 600)

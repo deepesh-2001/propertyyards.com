@@ -1,13 +1,19 @@
-// API Configuration for different environments
+// API Configuration for different environments.
+// NOTE: baseURL is the ORIGIN only (no trailing /api). All endpoint paths in
+// services/api.js already include the leading "/api". In development an empty
+// string is used so requests stay relative and go through the Vite dev proxy
+// (see vite.config.js) which forwards /api -> http://localhost:8000.
 const API_CONFIG = {
   development: {
-    baseURL: 'http://localhost:8000/api',
+    baseURL: '', // relative -> handled by Vite proxy
   },
   production: {
-    baseURL: 'https://your-backend-api.com/api', // Replace with your actual backend URL
+    // Replace with your actual backend origin (no trailing /api).
+    // Can also be overridden at build time via VITE_API_BASE_URL.
+    baseURL: import.meta.env.VITE_API_BASE_URL || 'https://your-backend-api.com',
   },
   staging: {
-    baseURL: 'https://your-staging-api.com/api', // Replace with staging backend if needed
+    baseURL: import.meta.env.VITE_API_BASE_URL || 'https://your-staging-api.com',
   }
 };
 

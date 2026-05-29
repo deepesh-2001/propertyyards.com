@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { FiFileText, FiDownload, FiSend } from 'react-icons/fi'
+import { apiUrl, authHeaders } from '../../services/api'
 import './RentalAgreement.css'
 
 const DEFAULTS = {
@@ -31,12 +32,9 @@ export function RentalAgreement() {
 
   const handleSendForESign = async () => {
     try {
-      const res = await fetch('/api/rental-agreements/esign', {
+      const res = await fetch(apiUrl('/api/rental-agreements/esign'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('access_token') || ''}`,
-        },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ ...form, agreement_text: text }),
       })
       if (res.ok) alert('Sent for e-sign! Both parties will receive an email.')
