@@ -184,3 +184,58 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
         pass
     raise HTTPException(status_code=401, detail="Invalid token")
 
+
+def get_optional_user(authorization: Optional[str] = Header(None)) -> Optional[dict]:
+    """Like get_current_user but returns None instead of raising for unauthenticated requests.
+    Use for public endpoints that behave differently for logged-in users.
+    """
+    if not authorization:
+        return None
+    try:
+        parts = authorization.split(" ", 1)
+        if len(parts) != 2 or parts[0].lower() != "bearer":
+            return None
+        token_data = decode_token(parts[1])
+        if token_data:
+            return {
+                "user_id": token_data.user_id,
+                "email": token_data.email,
+                "role": token_data.role,
+            }
+    except Exception:
+        pass
+    return None
+
+
+def require_role(*allowed_roles: str):
+    """
+    FastAPI Depends factory that enforces authentication AND one of the allowed roles.
+
+    Usage:
+        @router.post("/listings")
+        async def create(current_user = Depends(require_role("seller", "agent", "admin"))):
+            ...
+    """
+    from fastapi import HTTPException, Depends
+
+    def _checker(current_user: dict = Depends(get_current_user)) -> dict:
+        if current_user.get("role") not in allowed_roles:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Access denied. Required roles: {', '.join(allowed_roles)}. "
+                       f"Your role: {current_user.get('role')}",
+            )
+        return current_user
+
+    return _checker
+
+
+def require_admin():
+    """Shorthand Depends that allows only admin role."""
+    return require_role(Role.ADMIN)
+
+
+def require_seller_or_agent():
+    """Shorthand Depends that allows seller, agent, or admin."""
+    return require_role(Role.SELLER, Role.AGENT, Role.ADMIN)
+

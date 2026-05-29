@@ -1,6 +1,8 @@
 """
 Security Middleware
-Handles rate limiting, input validation, CORS headers, and request logging
+Handles rate limiting, input validation, CORS headers, request logging,
+ETag generation and Cache-Control response headers.
+Enhanced with IP whitelisting, request size limits, and threat detection.
 """
 from fastapi import Request, HTTPException, status
 from fastapi.middleware import Middleware
@@ -12,15 +14,172 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware as RateLimiter
 import time
+import hashlib
 import logging
-from typing import Callable
+from typing import Callable, Set, Dict
 import re
 from html import escape
+from collections import defaultdict, deque
+import json
 
 logger = logging.getLogger(__name__)
 
 # Rate limiter
 limiter = Limiter(key_func=get_remote_address)
+
+# Enhanced security tracking
+class ThreatDetector:
+    """Advanced threat detection system"""
+    
+    def __init__(self):
+        # Track suspicious IPs
+        self.suspicious_ips: Dict[str, Dict] = defaultdict(lambda: {
+            "requests": deque(maxlen=1000),
+            "failed_attempts": 0,
+            "blocked_until": None,
+            "threat_score": 0
+        })
+        
+        # Common attack patterns
+        self.sql_injection_patterns = [
+            r'(\%27)|(\')|(\-\-)|(\%23)|(#)',
+            r'((\%3D)|(=))[^\n]*((\%27)|(\')|(\-\-)|(\%3B)|(;))',
+            r'\w*((\%27)|(\'))((\%6F)|o|(\%4F))((\%72)|r|(\%52))',
+            r'((\%27)|(\'))union',
+            r'exec(\s|\+)+(s|x)p\w+',
+            r'UNION[^a-zA-Z]', 
+            r'SELECT[^a-zA-Z]',
+            r'INSERT[^a-zA-Z]',
+            r'DELETE[^a-zA-Z]',
+            r'UPDATE[^a-zA-Z]',
+            r'DROP[^a-zA-Z]'
+        ]
+        
+        self.xss_patterns = [
+            r'<script[^>]*>.*?</script>',
+            r'javascript:',
+            r'on\w+\s*=',
+            r'<iframe[^>]*>',
+            r'<object[^>]*>',
+            r'<embed[^>]*>',
+            r'eval\s*\(',
+            r'alert\s*\(',
+            r'document\.cookie'
+        ]
+        
+        self.path_traversal_patterns = [
+            r'\.\./',
+            r'\.\.\\',
+            r'%2e%2e%2f',
+            r'%2e%2e\\',
+            r'\.\.%2f',
+            r'\.\.%5c'
+        ]
+        
+        # Rate limiting per endpoint
+        self.endpoint_limits = {
+            "/api/auth/login": {"requests": 5, "window": 300},  # 5 requests per 5 minutes
+            "/api/auth/register": {"requests": 3, "window": 300},  # 3 requests per 5 minutes
+            "/api/auth/forgot-password": {"requests": 3, "window": 900},  # 3 requests per 15 minutes
+            "/api/payments": {"requests": 10, "window": 60},  # 10 requests per minute
+            "/api/properties": {"requests": 100, "window": 60},  # 100 requests per minute
+            "default": {"requests": 60, "window": 60}  # 60 requests per minute
+        }
+    
+    def analyze_request(self, request: Request) -> Dict[str, any]:
+        """Analyze request for threats"""
+        threats = []
+        threat_score = 0
+        
+        client_ip = request.client.host if request.client else "unknown"
+        user_agent = request.headers.get("user-agent", "")
+        path = request.url.path
+        query_string = str(request.query_params)
+        
+        # Check for SQL injection
+        for pattern in self.sql_injection_patterns:
+            if re.search(pattern, query_string, re.IGNORECASE):
+                threats.append("sql_injection")
+                threat_score += 30
+                break
+        
+        # Check for XSS
+        for pattern in self.xss_patterns:
+            if re.search(pattern, query_string, re.IGNORECASE):
+                threats.append("xss")
+                threat_score += 20
+                break
+        
+        # Check for path traversal
+        for pattern in self.path_traversal_patterns:
+            if re.search(pattern, path, re.IGNORECASE):
+                threats.append("path_traversal")
+                threat_score += 25
+                break
+        
+        # Check for suspicious user agents
+        suspicious_agents = [
+            "sqlmap", "nikto", "dirb", "nmap", "masscan", "zap", "burp",
+            "python-requests", "curl", "wget", "powershell"
+        ]
+        
+        for agent in suspicious_agents:
+            if agent.lower() in user_agent.lower():
+                threats.append("suspicious_user_agent")
+                threat_score += 15
+                break
+        
+        # Check request rate
+        current_time = time.time()
+        ip_data = self.suspicious_ips[client_ip]
+        ip_data["requests"].append(current_time)
+        
+        # Count requests in last minute
+        recent_requests = [req for req in ip_data["requests"] if current_time - req < 60]
+        
+        # Get endpoint-specific limit
+        endpoint_limit = self.endpoint_limits.get(path, self.endpoint_limits["default"])
+        
+        if len(recent_requests) > endpoint_limit["requests"]:
+            threats.append("rate_limit_exceeded")
+            threat_score += 10
+        
+        # Update threat score
+        ip_data["threat_score"] = max(ip_data["threat_score"], threat_score)
+        
+        return {
+            "threats": threats,
+            "threat_score": threat_score,
+            "should_block": threat_score >= 50,
+            "recent_requests": len(recent_requests)
+        }
+    
+    def is_ip_blocked(self, client_ip: str) -> bool:
+        """Check if IP is blocked"""
+        ip_data = self.suspicious_ips[client_ip]
+        if ip_data["blocked_until"]:
+            return time.time() < ip_data["blocked_until"]
+        return False
+    
+    def block_ip(self, client_ip: str, duration: int = 3600):
+        """Block IP for specified duration"""
+        ip_data = self.suspicious_ips[client_ip]
+        ip_data["blocked_until"] = time.time() + duration
+        ip_data["threat_score"] = 100
+        logger.warning(f"IP {client_ip} blocked for {duration} seconds")
+
+# Global threat detector
+threat_detector = ThreatDetector()
+
+# IP whitelist for admin endpoints
+ADMIN_IP_WHITELIST: Set[str] = {
+    "127.0.0.1", "::1",  # localhost
+    # Add production admin IPs here
+}
+
+# Request size limits (in bytes)
+MAX_REQUEST_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024   # 50MB
 
 
 def setup_security_middleware(app):
@@ -36,6 +195,87 @@ def setup_security_middleware(app):
 
     # Trusted hosts (uncomment for production)
     # app.add_middleware(TrustedHostMiddleware, allowed_hosts=["propertyyards.com", "*.propertyyards.com"])
+
+    # Enhanced threat detection middleware
+    @app.middleware("http")
+    async def threat_detection_middleware(request: Request, call_next: Callable):
+        """Advanced threat detection and IP blocking"""
+        client_ip = request.client.host if request.client else "unknown"
+        
+        # Check if IP is already blocked
+        if threat_detector.is_ip_blocked(client_ip):
+            logger.warning(f"Blocked IP attempted access: {client_ip}")
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied. Your IP has been temporarily blocked due to suspicious activity."
+            )
+        
+        # Analyze request for threats
+        threat_analysis = threat_detector.analyze_request(request)
+        
+        # Block high-threat requests
+        if threat_analysis["should_block"]:
+            threat_detector.block_ip(client_ip, duration=3600)  # Block for 1 hour
+            logger.warning(f"IP blocked due to threat detection: {client_ip}, threats: {threat_analysis['threats']}")
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied. Suspicious activity detected."
+            )
+        
+        # Log medium-threat requests
+        if threat_analysis["threat_score"] >= 25:
+            logger.warning(f"Suspicious request from {client_ip}: score={threat_analysis['threat_score']}, threats={threat_analysis['threats']}")
+        
+        # Add threat info to request state for monitoring
+        request.state.threat_analysis = threat_analysis
+        
+        response = await call_next(request)
+        return response
+
+    # Request size limiting middleware
+    @app.middleware("http")
+    async def request_size_limit_middleware(request: Request, call_next: Callable):
+        """Limit request size to prevent DoS attacks"""
+        content_length = request.headers.get("content-length")
+        if content_length:
+            try:
+                size = int(content_length)
+                # Check if it's a file upload endpoint
+                if request.url.path.startswith("/api/upload") or request.url.path.startswith("/api/properties/upload"):
+                    max_size = MAX_UPLOAD_SIZE
+                else:
+                    max_size = MAX_REQUEST_SIZE
+                
+                if size > max_size:
+                    logger.warning(f"Request too large: {size} bytes from {request.client.host}")
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"Request too large. Maximum size is {max_size // (1024*1024)}MB"
+                    )
+            except ValueError:
+                pass  # Invalid content-length header
+        
+        response = await call_next(request)
+        return response
+
+    # Admin IP whitelist middleware
+    @app.middleware("http")
+    async def admin_ip_whitelist_middleware(request: Request, call_next: Callable):
+        """Restrict admin endpoints to whitelisted IPs"""
+        if request.url.path.startswith("/api/admin") or request.url.path.startswith("/admin"):
+            client_ip = request.client.host if request.client else "unknown"
+            
+            # Skip whitelist check in development
+            from app.config import settings
+            if not settings.DEBUG and client_ip not in ADMIN_IP_WHITELIST:
+                logger.warning(f"Admin access denied for IP: {client_ip}")
+                raise HTTPException(
+                    status_code=403,
+                    detail="Admin access restricted to whitelisted IPs only"
+                )
+        
+        response = await call_next(request)
+        return response
 
     # Security headers middleware
     @app.middleware("http")
@@ -69,6 +309,75 @@ def setup_security_middleware(app):
 
         # Add process time header
         response.headers["X-Process-Time"] = str(process_time)
+
+        return response
+
+    # ETag + Cache-Control middleware
+    @app.middleware("http")
+    async def add_cache_headers(request: Request, call_next: Callable):
+        response = await call_next(request)
+
+        path = request.url.path
+
+        # ── Cache-Control rules ──────────────────────────────────────
+        if request.method == "GET":
+            # Public, cacheable API resources (properties, analytics, news)
+            if any(path.startswith(p) for p in [
+                "/api/properties", "/api/analytics", "/api/news",
+                "/api/locality", "/api/brokers",
+            ]):
+                response.headers.setdefault("Cache-Control", "public, max-age=300, stale-while-revalidate=60")
+
+            # User-specific private data — never share across users
+            elif any(path.startswith(p) for p in [
+                "/api/users", "/api/payments", "/api/rewards",
+                "/api/notifications", "/api/crm", "/api/feedback",
+            ]):
+                response.headers["Cache-Control"] = "private, no-store"
+
+            # Auth endpoints — never cache
+            elif path.startswith("/api/auth"):
+                response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+
+            # AI / expensive compute endpoints — short public cache
+            elif any(path.startswith(p) for p in ["/api/ai", "/api/architecture", "/api/prediction"]):
+                response.headers.setdefault("Cache-Control", "public, max-age=60")
+
+            else:
+                response.headers.setdefault("Cache-Control", "no-cache")
+
+        elif request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            # Mutations must never be served from cache
+            response.headers["Cache-Control"] = "no-store"
+
+        # ── ETag for successful GET responses ─────────────────────────
+        if request.method == "GET" and response.status_code == 200:
+            try:
+                body = b""
+                async for chunk in response.body_iterator:
+                    body += chunk
+                if body:
+                    etag = f'"{hashlib.md5(body).hexdigest()}"'
+                    response.headers["ETag"] = etag
+
+                    # Check If-None-Match — return 304 if unchanged
+                    client_etag = request.headers.get("If-None-Match")
+                    if client_etag and client_etag == etag:
+                        from fastapi.responses import Response as FResponse
+                        not_modified = FResponse(status_code=304)
+                        not_modified.headers["ETag"] = etag
+                        not_modified.headers["Cache-Control"] = response.headers.get("Cache-Control", "no-cache")
+                        return not_modified
+
+                    from fastapi.responses import Response as FResponse
+                    return FResponse(
+                        content=body,
+                        status_code=response.status_code,
+                        headers=dict(response.headers),
+                        media_type=response.media_type,
+                    )
+            except Exception:
+                pass  # ETag generation is best-effort; never break the response
 
         return response
 

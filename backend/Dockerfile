@@ -47,7 +47,7 @@ VOLUME ["/app/certs"]
 
 # Run application with production settings
 # Supports both HTTP and HTTPS modes
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--access-log", "-"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 # Alternative HTTPS mode (uncomment if using SSL certificates)
 # CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--ssl-keyfile", "/app/certs/key.pem", "--ssl-certfile", "/app/certs/cert.pem", "--workers", "4"]

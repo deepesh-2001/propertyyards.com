@@ -10,7 +10,7 @@ import logging
 import sys
 
 from app.config import settings
-from app.routers import auth, users, properties, inquiries, admin, crm, referral, access, loan_calculator, contact, notifications, chatbot, brokers, reports, monitoring, recruitment, payments, self_healing, salary, commission, prediction, feedback, credit_card, reimbursement, claims, tax, onboarding, scraper, property_onboarding, feature_flags, whiteboard, analytics, cache_management, properties_cached, realtime, admin_portal, social_media, telegram, news, operations, architecture, ai_costs, ai_seo, comparison, cashback, deployment, inventory, tickets, rewards, insurance, cabs, trains, hotels, expected_return
+from app.routers import auth, users, properties, inquiries, admin, crm, referral, access, loan_calculator, contact, notifications, chatbot, brokers, reports, monitoring, recruitment, payments, self_healing, salary, commission, prediction, feedback, credit_card, reimbursement, claims, tax, onboarding, scraper, property_onboarding, feature_flags, whiteboard, analytics, cache_management, properties_cached, realtime, admin_portal, social_media, telegram, news, operations, architecture, ai_costs, ai_seo, comparison, cashback, deployment, inventory, tickets, rewards, insurance, cabs, trains, hotels, expected_return, images, property_layout, astrology, chat
 from app import health, cron
 from app.access import AccessControl
 from app.security import setup_security_middleware
@@ -184,6 +184,10 @@ app.include_router(cabs.router)
 app.include_router(trains.router)
 app.include_router(hotels.router)
 app.include_router(health.router)
+app.include_router(images.router)
+app.include_router(property_layout.router)
+app.include_router(astrology.router)
+app.include_router(chat.router)
 
 # Setup security middleware
 setup_security_middleware(app)

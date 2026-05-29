@@ -15,6 +15,20 @@ import Finance from './pages/Finance'
 import About from './pages/About'
 import News from './pages/News'
 import Contact from './pages/Contact'
+import Wishlist from './pages/Wishlist'
+import Compare from './pages/Compare'
+import NewProjects from './pages/NewProjects'
+import LocalityInsights from './pages/LocalityInsights'
+import CRM from './pages/CRM'
+import AITools from './pages/AITools'
+import Analytics from './pages/Analytics'
+import AdminPortal from './pages/AdminPortal'
+import Payments from './pages/Payments'
+import Rewards from './pages/Rewards'
+import Notifications from './pages/Notifications'
+import SocialMedia from './pages/SocialMedia'
+import Feedback from './pages/Feedback'
+import DemoTour from './components/DemoTour'
 
 function App() {
   return (
@@ -34,8 +48,22 @@ function App() {
         <Route path="/about"         element={<About />} />
         <Route path="/news"          element={<News />} />
         <Route path="/contact"       element={<Contact />} />
+        <Route path="/wishlist"      element={<Wishlist />} />
+        <Route path="/compare"       element={<Compare />} />
+        <Route path="/new-projects"  element={<NewProjects />} />
+        <Route path="/locality"      element={<LocalityInsights />} />
+        <Route path="/crm"           element={<CRM />} />
+        <Route path="/ai-tools"      element={<AITools />} />
+        <Route path="/analytics"     element={<Analytics />} />
+        <Route path="/admin"         element={<AdminPortal />} />
+        <Route path="/payments"      element={<Payments />} />
+        <Route path="/rewards"       element={<Rewards />} />
+        <Route path="/notifications" element={<Notifications />} />
+        <Route path="/social-media"  element={<SocialMedia />} />
+        <Route path="/feedback"      element={<Feedback />} />
       </Routes>
       <Footer />
+      <DemoTour />
     </AuthProvider>
     </ToastProvider>
     </LangProvider>

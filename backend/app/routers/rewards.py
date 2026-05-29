@@ -3,7 +3,7 @@ Rewards Router
 API endpoints for rewards, commission, and referral system
 """
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel
 
 from app.database import get_db
@@ -529,6 +529,128 @@ async def webhook_transaction_completed(
             "commission_processed": True,
             "points_awarded": reward_tx.points
         }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ========== Enhanced Conversion Endpoints ==========
+
+@router.get("/conversion/history")
+async def get_conversion_history(
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get user's conversion history"""
+    try:
+        from app.rewards_service import rewards_service
+        
+        user_id = str(current_user.get("_id"))
+        history = await rewards_service.get_conversion_history(user_id, limit)
+        
+        return {
+            "user_id": user_id,
+            "count": len(history),
+            "conversions": history
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/conversion/summary")
+async def get_conversion_summary(
+    current_user: dict = Depends(get_current_user)
+):
+    """Get user's conversion summary for current month"""
+    try:
+        from app.rewards_service import rewards_service
+        
+        user_id = str(current_user.get("_id"))
+        summary = await rewards_service.get_conversion_summary(user_id)
+        
+        return summary
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class BulkConversionRequest(BaseModel):
+    conversions: List[ConvertPointsRequest]
+
+
+@router.post("/conversion/bulk")
+async def bulk_convert_points(
+    request: BulkConversionRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Bulk convert points to multiple options"""
+    try:
+        from app.rewards_service import rewards_service
+        
+        user_id = str(current_user.get("_id"))
+        
+        # Convert request format
+        conversions = []
+        for conv in request.conversions:
+            conv_data = {
+                "points": conv.points,
+                "conversion_type": conv.conversion_type
+            }
+            if conv.bank_details:
+                conv_data["bank_details"] = {
+                    "account_number": conv.bank_details.account_number,
+                    "ifsc_code": conv.bank_details.ifsc_code,
+                    "account_holder_name": conv.bank_details.account_holder_name,
+                    "bank_name": conv.bank_details.bank_name
+                }
+            if conv.gift_card_type:
+                conv_data["gift_card_type"] = conv.gift_card_type
+            conversions.append(conv_data)
+        
+        results = await rewards_service.bulk_convert_points(user_id, conversions)
+        
+        successful = [r for r in results if r["success"]]
+        failed = [r for r in results if not r["success"]]
+        
+        return {
+            "success": len(failed) == 0,
+            "total_conversions": len(results),
+            "successful": len(successful),
+            "failed": len(failed),
+            "results": results,
+            "message": f"Bulk conversion completed: {len(successful)} successful, {len(failed)} failed"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class AutoConversionRequest(BaseModel):
+    points_threshold: float
+    conversion_type: str = "wallet_credit"
+    schedule: str = "monthly"  # daily, weekly, monthly
+
+
+@router.post("/conversion/auto-schedule")
+async def schedule_auto_conversion(
+    request: AutoConversionRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Schedule automatic point conversion"""
+    try:
+        from app.rewards_service import rewards_service
+        
+        user_id = str(current_user.get("_id"))
+        
+        result = await rewards_service.schedule_auto_conversion(
+            user_id=user_id,
+            points_threshold=request.points_threshold,
+            conversion_type=request.conversion_type,
+            schedule=request.schedule
+        )
+        
+        return result
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -862,6 +862,145 @@ class RewardsService:
         self.monthly_conversions.clear()
         logger.info("Monthly conversion limits reset")
 
+    async def get_conversion_history(
+        self,
+        user_id: str,
+        limit: int = 50
+    ) -> List[Dict]:
+        """Get user's conversion history"""
+        conversions = [
+            tx for tx in self.transactions.values()
+            if tx.user_id == user_id and tx.transaction_type == TransactionType.POINTS_REDEMPTION
+        ]
+        
+        conversions.sort(key=lambda x: x.created_at, reverse=True)
+        
+        return [
+            {
+                "id": tx.id,
+                "points_converted": abs(tx.points),
+                "cash_value": tx.amount,
+                "conversion_type": tx.redeemed_for,
+                "description": tx.description,
+                "created_at": tx.created_at.isoformat() if tx.created_at else None,
+                "status": "completed" if tx.redeemed else "pending"
+            }
+            for tx in conversions[:limit]
+        ]
+
+    async def get_conversion_summary(self, user_id: str) -> Dict[str, Any]:
+        """Get user's conversion summary for current month"""
+        from datetime import datetime
+        now = datetime.utcnow()
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        
+        conversions = [
+            tx for tx in self.transactions.values()
+            if (tx.user_id == user_id and 
+                tx.transaction_type == TransactionType.POINTS_REDEMPTION and
+                tx.created_at and tx.created_at >= month_start)
+        ]
+        
+        total_points_converted = sum(abs(tx.points) for tx in conversions)
+        total_cash_value = sum(tx.amount for tx in conversions)
+        
+        # Group by conversion type
+        by_type = {}
+        for tx in conversions:
+            conv_type = tx.redeemed_for or "unknown"
+            if conv_type not in by_type:
+                by_type[conv_type] = {"points": 0, "value": 0, "count": 0}
+            by_type[conv_type]["points"] += abs(tx.points)
+            by_type[conv_type]["value"] += tx.amount
+            by_type[conv_type]["count"] += 1
+        
+        wallet = self.get_or_create_wallet(user_id)
+        tier_config = self.tier_config[wallet.tier]
+        
+        return {
+            "user_id": user_id,
+            "current_month": {
+                "total_points_converted": round(total_points_converted, 2),
+                "total_cash_value": round(total_cash_value, 2),
+                "conversions_count": len(conversions),
+                "by_type": by_type
+            },
+            "limits": {
+                "monthly_limit": tier_config["max_monthly_conversion"],
+                "remaining": max(0, tier_config["max_monthly_conversion"] - self.monthly_conversions.get(user_id, 0)),
+                "used_percentage": round((self.monthly_conversions.get(user_id, 0) / tier_config["max_monthly_conversion"]) * 100, 2)
+            },
+            "tier_benefits": {
+                "conversion_fee": tier_config["conversion_fee"],
+                "points_to_inr_rate": self.points_to_inr_rate
+            }
+        }
+
+    async def bulk_convert_points(
+        self,
+        user_id: str,
+        conversions: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Bulk convert points to multiple options"""
+        results = []
+        wallet = self.get_or_create_wallet(user_id)
+        
+        # Check total points available
+        total_points_needed = sum(conv["points"] for conv in conversions)
+        if wallet.available_points < total_points_needed:
+            raise ValueError(f"Insufficient points. Available: {wallet.available_points}, Needed: {total_points_needed}")
+        
+        for conv in conversions:
+            try:
+                result = await self.convert_points_to_cash(
+                    user_id=user_id,
+                    points=conv["points"],
+                    conversion_type=conv["conversion_type"],
+                    bank_details=conv.get("bank_details"),
+                    gift_card_type=conv.get("gift_card_type")
+                )
+                results.append({
+                    "success": True,
+                    "conversion": result,
+                    "request": conv
+                })
+            except Exception as e:
+                results.append({
+                    "success": False,
+                    "error": str(e),
+                    "request": conv
+                })
+        
+        return results
+
+    async def schedule_auto_conversion(
+        self,
+        user_id: str,
+        points_threshold: float,
+        conversion_type: str,
+        schedule: str = "monthly"  # daily, weekly, monthly
+    ) -> Dict[str, Any]:
+        """Schedule automatic point conversion when threshold is reached"""
+        # This would integrate with a task scheduler like Celery in production
+        auto_conversion = {
+            "id": f"auto_conv_{user_id}_{datetime.utcnow().timestamp()}",
+            "user_id": user_id,
+            "points_threshold": points_threshold,
+            "conversion_type": conversion_type,
+            "schedule": schedule,
+            "created_at": datetime.utcnow().isoformat(),
+            "active": True
+        }
+        
+        # Store in a database in production
+        logger.info(f"Auto-conversion scheduled for user {user_id}: {points_threshold} points -> {conversion_type}")
+        
+        return {
+            "success": True,
+            "auto_conversion": auto_conversion,
+            "message": f"Auto-conversion scheduled. Points will be converted when balance reaches {points_threshold}"
+        }
+
 
 # Global instance
 rewards_service = RewardsService()

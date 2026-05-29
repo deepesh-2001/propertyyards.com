@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { toggleWishlist, isWishlisted } from '../pages/Wishlist'
 
 export function formatPrice(price, listingType) {
   if (listingType === 'rent') return `₹${price.toLocaleString('en-IN')}/mo`
@@ -24,10 +25,16 @@ export function PropertyCardSkeleton() {
   )
 }
 
-export default function PropertyCard({ property }) {
+export default function PropertyCard({ property, onCompare }) {
   const { id, title, city, state, price, listing_type, bedrooms, bathrooms, area, images, featured, premium_listing, property_type, furnished, ai_generated } = property
-  const [wishlist, setWishlist] = useState(false)
-  const [hovered, setHovered]  = useState(false)
+  const [wishlisted, setWishlisted] = useState(() => isWishlisted(id))
+  const [hovered, setHovered]       = useState(false)
+
+  useEffect(() => {
+    const handler = () => setWishlisted(isWishlisted(id))
+    window.addEventListener('wishlist-change', handler)
+    return () => window.removeEventListener('wishlist-change', handler)
+  }, [id])
 
   return (
     <div
@@ -55,13 +62,24 @@ export default function PropertyCard({ property }) {
         <span style={{ ...s.typeTag, background: listing_type === 'rent' ? '#059669' : '#1a56db' }}>
           {listing_type === 'rent' ? 'For Rent' : 'For Sale'}
         </span>
-        <button
-          onClick={() => setWishlist(w => !w)}
-          style={{ ...s.heart, background: wishlist ? '#fef2f2' : 'rgba(255,255,255,0.9)' }}
-          title={wishlist ? 'Remove from wishlist' : 'Add to wishlist'}
-        >
-          {wishlist ? '❤️' : '🤍'}
-        </button>
+        <div style={s.topRight}>
+          <button
+            onClick={e => { e.preventDefault(); e.stopPropagation(); setWishlisted(toggleWishlist(id)) }}
+            style={{ ...s.iconBtn, background: wishlisted ? '#fef2f2' : 'rgba(255,255,255,0.9)' }}
+            title={wishlisted ? 'Remove from wishlist' : 'Save to wishlist'}
+          >
+            {wishlisted ? '❤️' : '🤍'}
+          </button>
+          {onCompare && (
+            <button
+              onClick={e => { e.preventDefault(); e.stopPropagation(); onCompare(property) }}
+              style={{ ...s.iconBtn, background: 'rgba(255,255,255,0.9)' }}
+              title="Add to Compare"
+            >
+              ⚖️
+            </button>
+          )}
+        </div>
       </div>
 
       <Link to={`/property/${id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
@@ -102,7 +120,8 @@ const s = {
   topLeft:  { position: 'absolute', top: 10, left: 10, display: 'flex', flexDirection: 'column', gap: 4 },
   tag:      { color: '#fff', borderRadius: 6, padding: '3px 10px', fontSize: 11, fontWeight: 700, backdropFilter: 'blur(4px)' },
   typeTag:  { position: 'absolute', bottom: 10, left: 10, color: '#fff', borderRadius: 8, padding: '4px 12px', fontSize: 12, fontWeight: 700, backdropFilter: 'blur(4px)' },
-  heart:    { position: 'absolute', top: 10, right: 10, border: 'none', borderRadius: '50%', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'transform 0.2s' },
+  topRight:  { position: 'absolute', top: 10, right: 10, display: 'flex', flexDirection: 'column', gap: 5 },
+  iconBtn:    { border: 'none', borderRadius: '50%', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'transform 0.2s' },
   body:     { padding: '16px 18px' },
   price:    { fontSize: 22, fontWeight: 800, color: '#1a56db', marginBottom: 6, letterSpacing: '-0.5px' },
   title:    { fontSize: 14, fontWeight: 600, color: '#0f172a', marginBottom: 6, lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' },

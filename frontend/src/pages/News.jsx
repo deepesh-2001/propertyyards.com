@@ -14,7 +14,7 @@ const ARTICLES = [
   {
     id: 2, category: 'Policy & RERA', tag: '⚖️',
     title: 'RERA Tightens Rules for Under-Construction Properties',
-    excerpt: 'The Real Estate Regulatory Authority has mandated 70% escrow for all new project launches. Here's what it means for buyers and developers.',
+    excerpt: "The Real Estate Regulatory Authority has mandated 70% escrow for all new project launches. Here's what it means for buyers and developers.",
     author: 'Priya Nair', date: 'May 26, 2025', readTime: '5 min',
     image: 'https://picsum.photos/seed/news2/800/450',
     featured: true,
@@ -54,7 +54,7 @@ const ARTICLES = [
   {
     id: 7, category: 'Rental Market', tag: '🏘️',
     title: 'Bengaluru Rentals Up 22%: The IT Surge Behind the Numbers',
-    excerpt: 'The return-to-office wave and fresh hiring in Bengaluru's tech corridors have sent rental demand skyrocketing in Whitefield and Marathahalli.',
+    excerpt: 'The return-to-office wave and fresh hiring in Bengaluru\'s tech corridors have sent rental demand skyrocketing in Whitefield and Marathahalli.',
     author: 'Karthik R', date: 'May 15, 2025', readTime: '3 min',
     image: 'https://picsum.photos/seed/news7/800/450',
     featured: false,

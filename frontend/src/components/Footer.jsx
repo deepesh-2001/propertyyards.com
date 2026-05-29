@@ -2,18 +2,30 @@ import { Link } from 'react-router-dom'
 
 const LINKS = {
   'Explore': [
-    { label: '🏠 Buy Property',     to: '/?type=sale' },
-    { label: '🔑 Rent Property',    to: '/?type=rent' },
-    { label: '🧑‍💼 Find Brokers',  to: '/brokers' },
-    { label: '💰 Finance & Loans',  to: '/finance' },
-    { label: '📰 News & Insights',  to: '/news' },
+    { label: '🏠 Buy Property',      to: '/?type=sale' },
+    { label: '🔑 Rent Property',     to: '/?type=rent' },
+    { label: '🏗 New Projects',      to: '/new-projects' },
+    { label: '🧑‍💼 Find Brokers',   to: '/brokers' },
+    { label: '💰 Finance & Loans',   to: '/finance' },
+    { label: '📊 Locality Insights', to: '/locality' },
+    { label: '📰 News & Insights',   to: '/news' },
   ],
   'Quick Links': [
     { label: '📝 Post Your Property', to: '/post-property' },
     { label: '📊 My Dashboard',       to: '/dashboard' },
-    { label: '🏦 EMI Calculator',     to: '/finance' },
-    { label: '📋 Loan Comparison',    to: '/finance' },
-    { label: '🛡 Insurance',          to: '/finance' },
+    { label: '❤️ Wishlist',           to: '/wishlist' },
+    { label: '⚖️ Compare',            to: '/compare' },
+    { label: '💳 Payments & Wallet',  to: '/payments' },
+    { label: '🎁 Rewards',            to: '/rewards' },
+    { label: '🔔 Notifications',      to: '/notifications' },
+    { label: '⭐ Feedback',           to: '/feedback' },
+  ],
+  'Tools & Pro': [
+    { label: '📋 CRM',                to: '/crm' },
+    { label: '✨ AI Tools',           to: '/ai-tools' },
+    { label: '📈 Analytics',          to: '/analytics' },
+    { label: '📱 Social Media',       to: '/social-media' },
+    { label: '⚙️ Admin Portal',       to: '/admin' },
   ],
   'Company': [
     { label: '🏢 About Us',      to: '/about' },
