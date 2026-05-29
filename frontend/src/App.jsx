@@ -17,6 +17,11 @@ import { CompareBar, ComparePage } from './components/Compare'
 import { SavedSearchesPage } from './components/SavedSearches'
 import { MapSearch } from './components/MapSearch'
 import { LocalityIndex, LocalityDetail } from './components/Locality'
+import { TenantVerification } from './components/TenantVerification'
+import { RentalAgreement } from './components/RentalAgreement'
+import { Chatbot } from './components/Chatbot'
+import { LanguageSwitcher } from './components/LanguageSwitcher'
+import { I18nProvider } from './i18n/I18nContext'
 import './App.css'
 
 function ProtectedRoute({ children, isAuthenticated }) {
@@ -36,11 +41,13 @@ function App() {
   }, [])
 
   return (
+    <I18nProvider>
     <Router>
       <div className="App">
         {isAuthenticated && <Navigation user={user} />}
         <AlertContainer />
         <CompareBar />
+        <Chatbot />
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
@@ -164,6 +171,22 @@ function App() {
           <Route path="/map" element={<MapSearch />} />
           <Route path="/locality" element={<LocalityIndex />} />
           <Route path="/locality/:slug" element={<LocalityDetail />} />
+          <Route
+            path="/tenant-verification"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <TenantVerification />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rental-agreement"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <RentalAgreement />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Default Route */}
           <Route
@@ -182,6 +205,7 @@ function App() {
         </Routes>
       </div>
     </Router>
+    </I18nProvider>
   )
 }
 
@@ -243,6 +267,12 @@ function Navigation({ user }) {
           <a href="/locality" className="nav-link">
             Localities
           </a>
+          <a href="/tenant-verification" className="nav-link">
+            Verify
+          </a>
+          <a href="/rental-agreement" className="nav-link">
+            Agreement
+          </a>
           {user?.role === 'admin' && (
             <>
               <a href="/pricing" className="nav-link">
@@ -256,6 +286,7 @@ function Navigation({ user }) {
               </a>
             </>
           )}
+          <LanguageSwitcher />
           {user && (
             <div className="user-info">
               <span>{user.first_name}</span>

@@ -1,0 +1,66 @@
+.cb-fab {
+  position: fixed; bottom: 80px; right: 20px;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: #4f46e5; color: #fff; border: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; cursor: pointer;
+  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.4);
+  z-index: 60;
+  transition: transform .15s;
+}
+.cb-fab:hover { transform: scale(1.06); }
+.cb-fab.open { background: #1f2937; }
+
+.cb-panel {
+  position: fixed; bottom: 150px; right: 20px;
+  width: 360px; max-width: calc(100vw - 24px);
+  height: 480px; max-height: calc(100vh - 200px);
+  background: #fff; border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.2);
+  z-index: 60;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.cb-header {
+  padding: 12px 14px; background: #4f46e5; color: #fff;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.cb-header button { background: transparent; border: 0; color: #fff; cursor: pointer; font-size: 18px; }
+
+.cb-messages {
+  flex: 1; padding: 12px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 8px;
+  background: #f9fafb;
+}
+.cb-msg {
+  max-width: 80%;
+  padding: 8px 12px; border-radius: 14px;
+  font-size: 13px; line-height: 1.4;
+}
+.cb-bot { background: #fff; border: 1px solid #e5e7eb; align-self: flex-start; border-bottom-left-radius: 4px; }
+.cb-user { background: #4f46e5; color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+.cb-typing { font-style: italic; color: #6b7280; }
+
+.cb-suggested {
+  padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 6px;
+  border-top: 1px solid #f3f4f6;
+}
+.cb-chip {
+  background: #eef2ff; color: #4338ca; border: 0;
+  padding: 4px 10px; border-radius: 999px; font-size: 11px;
+  cursor: pointer;
+}
+.cb-chip:hover { background: #e0e7ff; }
+
+.cb-input {
+  display: flex; gap: 6px; padding: 10px 12px; border-top: 1px solid #f3f4f6;
+}
+.cb-input input {
+  flex: 1; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 999px;
+  font-size: 13px; outline: none;
+}
+.cb-input button {
+  background: #4f46e5; color: #fff; border: 0; border-radius: 50%;
+  width: 36px; height: 36px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
