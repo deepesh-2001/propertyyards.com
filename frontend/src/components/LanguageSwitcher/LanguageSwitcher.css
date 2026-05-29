@@ -1,9 +1,0 @@
-.lang-switcher {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 8px; border: 1px solid #e5e7eb; border-radius: 8px;
-  background: #fff; font-size: 13px; color: #374151;
-}
-.lang-switcher select {
-  border: 0; background: transparent; font-size: 13px; outline: none;
-  appearance: none; padding-right: 4px;
-}
