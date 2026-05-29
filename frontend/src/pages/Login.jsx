@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { useLang } from '../context/LangContext'
 
 export default function Login() {
   const { login } = useAuth()
   const { toast } = useToast()
+  const { tr }    = useLang()
   const nav = useNavigate()
   const [form, setForm]     = useState({ email: '', password: '' })
   const [error, setError]   = useState('')
@@ -33,19 +35,19 @@ export default function Login() {
     <div style={s.page}>
       <div style={s.card}>
         <div style={s.logo}>🏠 PropertyYards</div>
-        <h1 style={s.title}>Welcome back</h1>
-        <p style={s.sub}>Sign in to your account</p>
+        <h1 style={s.title}>{tr('welcomeBack')}</h1>
+        <p style={s.sub}>{tr('signInSub')}</p>
 
         {error && <div style={s.error}>{error}</div>}
 
         <form onSubmit={submit} style={s.form}>
           <div style={s.field}>
-            <label style={s.label}>Email address</label>
+            <label style={s.label}>{tr('emailLabel')}</label>
             <input required type="email" value={form.email} placeholder="you@example.com"
               onChange={e => setForm({...form, email: e.target.value})} style={s.input} />
           </div>
           <div style={s.field}>
-            <label style={s.label}>Password</label>
+            <label style={s.label}>{tr('passwordLabel')}</label>
             <div style={{ position: 'relative' }}>
               <input required type={showPass ? 'text' : 'password'} value={form.password} placeholder="••••••••"
                 onChange={e => setForm({...form, password: e.target.value})} style={s.input} />
@@ -54,18 +56,18 @@ export default function Login() {
             </div>
           </div>
           <button type="submit" disabled={loading} style={s.btn}>
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? tr('signingIn') : tr('signIn')}
           </button>
         </form>
 
-        <div style={s.divider}><span>Test Credentials</span></div>
+        <div style={s.divider}><span>{tr('testCredentials')}</span></div>
         <div style={s.testCreds}>
           <div>📧 admin@propertyyards.com</div>
           <div>🔑 Test@1234</div>
         </div>
 
         <p style={s.footer}>
-          Don't have an account? <Link to="/register" style={s.link}>Create one free</Link>
+          {tr('noAccount')} <Link to="/register" style={s.link}>{tr('createFree')}</Link>
         </p>
       </div>
     </div>

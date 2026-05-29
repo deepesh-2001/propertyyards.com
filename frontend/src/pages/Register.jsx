@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { useLang } from '../context/LangContext'
 
 export default function Register() {
   const { register } = useAuth()
   const { toast }    = useToast()
+  const { tr }       = useLang()
   const nav = useNavigate()
   const [form, setForm] = useState({ first_name: '', last_name: '', email: '', phone_number: '', password: '', role: 'buyer' })
   const [error, setError]   = useState('')
@@ -34,24 +36,24 @@ export default function Register() {
     <div style={s.page}>
       <div style={s.card}>
         <div style={s.logo}>🏠 PropertyYards</div>
-        <h1 style={s.title}>Create your account</h1>
-        <p style={s.sub}>Join thousands of buyers, sellers and agents</p>
+        <h1 style={s.title}>{tr('createAccount')}</h1>
+        <p style={s.sub}>{tr('registerSub')}</p>
 
         {error && <div style={s.error}>{error}</div>}
 
         <form onSubmit={submit} style={s.form}>
           <div style={s.row}>
-            <Field label="First Name" type="text" placeholder="Rahul" {...f('first_name')} required />
-            <Field label="Last Name" type="text" placeholder="Sharma" {...f('last_name')} required />
+            <Field label={tr('firstName')} type="text" placeholder="Rahul" {...f('first_name')} required />
+            <Field label={tr('lastName')}  type="text" placeholder="Sharma" {...f('last_name')} required />
           </div>
-          <Field label="Email" type="email" placeholder="you@example.com" {...f('email')} required />
-          <Field label="Phone Number" type="tel" placeholder="+91 9876543210" {...f('phone_number')} />
-          <Field label="Password" type="password" placeholder="Min 8 characters" {...f('password')} required />
+          <Field label={tr('emailLabel')} type="email" placeholder="you@example.com" {...f('email')} required />
+          <Field label={tr('phone')} type="tel" placeholder="+91 9876543210" {...f('phone_number')} />
+          <Field label={tr('passwordLabel')} type="password" placeholder="Min 8 characters" {...f('password')} required />
 
           <div style={s.field}>
-            <label style={s.label}>I am a</label>
+            <label style={s.label}>{tr('iAm')}</label>
             <div style={s.roleGrid}>
-              {[['buyer','🏠 Buyer'],['seller','🏢 Seller'],['agent','🧑‍💼 Agent']].map(([val, label]) => (
+              {[['buyer', tr('buyer')],['seller', tr('seller')],['agent', tr('agent')]].map(([val, label]) => (
                 <button type="button" key={val} onClick={() => setForm({...form, role: val})}
                   style={{ ...s.roleBtn, ...(form.role === val ? s.roleActive : {}) }}>
                   {label}
@@ -61,12 +63,12 @@ export default function Register() {
           </div>
 
           <button type="submit" disabled={loading} style={s.btn}>
-            {loading ? 'Creating account...' : 'Create Free Account'}
+            {loading ? tr('creatingAccount') : tr('createFreeBtn')}
           </button>
         </form>
 
         <p style={s.footer}>
-          Already have an account? <Link to="/login" style={s.link}>Sign in</Link>
+          {tr('alreadyAccount')} <Link to="/login" style={s.link}>{tr('signIn')}</Link>
         </p>
       </div>
     </div>

@@ -128,3 +128,57 @@ img { display: block; max-width: 100%; }
 
 .page-wrap { max-width: 1240px; margin: 0 auto; padding: 0 1.5rem; }
 
+/* ── Responsive ─────────────────────────────── */
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .page-wrap { padding: 0 1rem; }
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  html { font-size: 15px; }
+  .page-wrap { padding: 0 0.875rem; }
+
+  /* Larger tap targets */
+  button, a, select, input { min-height: 44px; }
+
+  /* Ensure inputs don't zoom on iOS */
+  input, select, textarea { font-size: 16px !important; }
+
+  /* Stat bar wraps on small screens */
+  .stat-wrap { flex-wrap: wrap; gap: 12px; height: auto !important; padding: 12px 1rem !important; }
+
+  /* Cards full width */
+  .card { border-radius: 12px !important; }
+}
+
+/* iPhone safe areas */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body { padding-bottom: env(safe-area-inset-bottom); }
+  nav  { padding-left:  env(safe-area-inset-left);
+         padding-right: env(safe-area-inset-right); }
+}
+
+/* Touch devices: remove hover effects that look wrong */
+@media (hover: none) {
+  .card:hover { transform: none !important; box-shadow: var(--shadow-sm) !important; }
+  .btn-primary:hover { transform: none !important; }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:      #0f172a;
+    --surface: #1e293b;
+    --border:  #334155;
+    --text:    #f1f5f9;
+    --muted:   #94a3b8;
+    --faint:   #1e293b;
+  }
+  .skeleton {
+    background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+    background-size: 200% 100%;
+  }
+}
+

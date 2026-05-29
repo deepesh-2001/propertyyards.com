@@ -3,11 +3,18 @@ import { useSearchParams } from 'react-router-dom'
 import PropertyCard, { PropertyCardSkeleton } from '../components/PropertyCard'
 import { propertiesAPI } from '../services/api'
 import { TEST_PROPERTIES } from '../data/testData'
+import { useLang } from '../context/LangContext'
+import { useBreakpoint } from '../hooks/useBreakpoint'
+import { useTimeGreeting } from '../hooks/useTimeGreeting'
 
 const CITIES = ['All', 'Gurgaon', 'Noida', 'Delhi', 'Greater Noida', 'Faridabad', 'Mumbai', 'Bangalore', 'Hyderabad', 'Pune']
 const TYPES  = ['All', 'apartment', 'villa', 'house', 'plot', 'commercial', 'studio']
 
 export default function Home() {
+  const { tr } = useLang()
+  const { isMobile, isTablet } = useBreakpoint()
+  const greetKey = useTimeGreeting()
+  const cols = isMobile ? '1fr' : isTablet ? 'repeat(2,1fr)' : 'repeat(auto-fill,minmax(300px,1fr))'
   const [searchParams, setSearchParams] = useSearchParams()
   const [properties, setProperties] = useState([])
   const [loading, setLoading]         = useState(true)
@@ -48,30 +55,31 @@ export default function Home() {
     <div style={{ background: '#f9fafb', minHeight: '100vh' }}>
       {/* Hero */}
       <div style={s.hero}>
-        <h1 style={s.heroH1}>Find Your Dream Property</h1>
-        <p style={s.heroP}>Buy, Rent or Sell — India's most trusted real estate platform</p>
+        <div style={s.greetBadge}>{tr(greetKey)}</div>
+        <h1 style={s.heroH1}>{tr('heroTitle')}</h1>
+        <p style={s.heroP}>{tr('heroSub')}</p>
 
         <div style={s.searchBar}>
           <input
-            placeholder="Search city, locality, project name..."
+            placeholder={tr('searchPlaceholder')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={s.searchInput}
           />
           <div style={s.filterRow}>
             <select value={listingType} onChange={e => setListingType(e.target.value)} style={s.sel}>
-              <option value="all">Buy + Rent</option>
-              <option value="sale">Buy</option>
-              <option value="rent">Rent</option>
+              <option value="all">{tr('buyRent')}</option>
+              <option value="sale">{tr('buy')}</option>
+              <option value="rent">{tr('rent')}</option>
             </select>
             <select value={propType} onChange={e => setPropType(e.target.value)} style={s.sel}>
-              {TYPES.map(t => <option key={t} value={t}>{t === 'All' ? 'All Types' : t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+              {TYPES.map(t => <option key={t} value={t}>{t === 'All' ? tr('allTypes') : t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
             </select>
             <select value={beds} onChange={e => setBeds(e.target.value)} style={s.sel}>
-              {['Any','1','2','3','4','5'].map(b => <option key={b} value={b}>{b === 'Any' ? 'Any Beds' : `${b} BHK`}</option>)}
+              {['Any','1','2','3','4','5'].map(b => <option key={b} value={b}>{b === 'Any' ? tr('anyBeds') : `${b} ${tr('bhk')}`}</option>)}
             </select>
-            <input placeholder="Min Price ₹" type="number" value={minPrice} onChange={e => setMinPrice(e.target.value)} style={{ ...s.sel, width: 120 }} />
-            <input placeholder="Max Price ₹" type="number" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} style={{ ...s.sel, width: 120 }} />
+            <input placeholder={tr('minPrice')} type="number" value={minPrice} onChange={e => setMinPrice(e.target.value)} style={{ ...s.sel, width: 120 }} />
+            <input placeholder={tr('maxPrice')} type="number" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} style={{ ...s.sel, width: 120 }} />
           </div>
         </div>
 
@@ -85,7 +93,7 @@ export default function Home() {
 
       <div style={s.statBar}>
         <div style={s.statWrap}>
-          {[['15,000+','Active Listings'],['10+','Cities Covered'],['50,000+','Happy Buyers'],['₹50Cr+','Properties Sold']].map(([v,l]) => (
+          {[['15,000+',tr('activeListings')],['10+',tr('citiesCovered')],['50,000+',tr('happyBuyers')],['₹50Cr+',tr('propertiesSold')]].map(([v,l]) => (
             <div key={l} style={s.stat}>
               <span style={s.statVal}>{v}</span>
               <span style={s.statLabel}>{l}</span>
@@ -98,15 +106,15 @@ export default function Home() {
         {loading ? (
           <div style={s.grid}>{Array(6).fill(0).map((_,i) => <PropertyCardSkeleton key={i} />)}</div>
         ) : filtered.length === 0 ? (
-          <div style={s.empty}>No properties found. Try adjusting filters.</div>
+          <div style={s.empty}>{tr('noResults')}</div>
         ) : (
           <>
-            {featured.length > 0 && <Section title="🔥 Featured Properties" items={featured} />}
-            {gurgaon.length  > 0 && <Section title="🏙️ Gurgaon" items={gurgaon} />}
-            {nearby.length   > 0 && <Section title="📍 Noida, Greater Noida, Faridabad & Delhi" items={nearby} />}
-            {others.length   > 0 && <Section title="🌆 Other Cities" items={others} />}
+            {featured.length > 0 && <Section title={tr('featured')}   items={featured} cols={cols} />}
+            {gurgaon.length  > 0 && <Section title={tr('gurgaon')}    items={gurgaon}  cols={cols} />}
+            {nearby.length   > 0 && <Section title={tr('nearby')}     items={nearby}   cols={cols} />}
+            {others.length   > 0 && <Section title={tr('otherCities')} items={others}  cols={cols} />}
             {featured.length === 0 && gurgaon.length === 0 && nearby.length === 0 && others.length === 0 && (
-              <Section title="All Properties" items={filtered} />
+              <Section title="All Properties" items={filtered} cols={cols} />
             )}
           </>
         )}
@@ -115,11 +123,11 @@ export default function Home() {
   )
 }
 
-function Section({ title, items }) {
+function Section({ title, items, cols }) {
   return (
     <div style={{ marginBottom: '3rem' }}>
       <h2 style={s.sectionTitle}>{title} <span style={s.count}>({items.length})</span></h2>
-      <div style={s.grid}>
+      <div style={{ ...s.grid, gridTemplateColumns: cols }}>
         {items.map(p => <PropertyCard key={p.id || p._id} property={p} />)}
       </div>
     </div>
@@ -133,7 +141,8 @@ const s = {
   stat:       { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 },
   statVal:    { fontSize: 22, fontWeight: 800, color: '#1a56db', letterSpacing: '-0.5px' },
   statLabel:  { fontSize: 12, color: '#64748b', fontWeight: 500 },
-  heroH1:      { fontSize: 46, fontWeight: 900, margin: '0 0 0.75rem', letterSpacing: '-1.5px', lineHeight: 1.1 },
+  greetBadge: { display: 'inline-block', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 20, padding: '4px 16px', fontSize: 13, fontWeight: 600, marginBottom: 16, backdropFilter: 'blur(4px)' },
+  heroH1:      { fontSize: 'clamp(28px, 5vw, 46px)', fontWeight: 900, margin: '0 0 0.75rem', letterSpacing: '-1.5px', lineHeight: 1.1 },
   heroP:       { fontSize: 18, opacity: 0.85, margin: '0 0 2rem' },
   searchBar:   { background: '#fff', borderRadius: 14, padding: '16px 20px', maxWidth: 860, margin: '0 auto 1.5rem', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' },
   searchInput: { width: '100%', border: 'none', outline: 'none', fontSize: 16, padding: '6px 0', borderBottom: '2px solid #e5e7eb', marginBottom: 12, boxSizing: 'border-box' },

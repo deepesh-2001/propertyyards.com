@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
+import { LangProvider } from './context/LangContext'
 import { AuthProvider } from './context/AuthContext'
 import { ToastProvider } from './context/ToastContext'
 import Navbar from './components/Navbar'
@@ -12,6 +13,7 @@ import Brokers from './pages/Brokers'
 
 function App() {
   return (
+    <LangProvider>
     <ToastProvider>
     <AuthProvider>
       <Navbar />
@@ -26,6 +28,7 @@ function App() {
       </Routes>
     </AuthProvider>
     </ToastProvider>
+    </LangProvider>
   )
 }
 
