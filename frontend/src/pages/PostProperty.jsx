@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import { propertiesAPI } from '../services/api'
 
 const AMENITIES = ['Swimming Pool','Gym','Parking','Security','Power Backup','Lift','Garden','Club House','24x7 Water Supply','CCTV','Intercom','Fire Safety','Rainwater Harvesting','Solar Panel']
 
 export default function PostProperty() {
   const { isLoggedIn } = useAuth()
+  const { toast }      = useToast()
   const nav = useNavigate()
 
   const [form, setForm] = useState({
@@ -40,10 +42,13 @@ export default function PostProperty() {
         bathrooms: Number(form.bathrooms),
         area: Number(form.area),
       })
+      toast('Property posted successfully! 🎉', 'success')
       setSuccess(true)
       setTimeout(() => nav('/dashboard'), 2000)
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to post property. Please try again.')
+      const msg = err.response?.data?.detail || 'Failed to post property. Please try again.'
+      setError(msg)
+      toast(msg, 'error')
     } finally {
       setLoading(false)
     }

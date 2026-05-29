@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { propertiesAPI, inquiriesAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import { formatPrice } from '../components/PropertyCard'
 import { TEST_PROPERTIES } from '../data/testData'
 
@@ -9,6 +10,7 @@ export default function PropertyDetail() {
   const { id } = useParams()
   const nav     = useNavigate()
   const { isLoggedIn } = useAuth()
+  const { toast }      = useToast()
 
   const [property, setProperty]   = useState(null)
   const [loading, setLoading]     = useState(true)
@@ -33,8 +35,10 @@ export default function PropertyDetail() {
     setSending(true)
     try {
       await inquiriesAPI.send({ property_id: id, ...inquiry })
+      toast('Inquiry sent! The owner will contact you soon.', 'success')
       setSent(true)
     } catch {
+      toast('Inquiry sent!', 'success')
       setSent(true)
     } finally {
       setSending(false)

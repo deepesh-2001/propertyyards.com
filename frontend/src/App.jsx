@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
+import { ToastProvider } from './context/ToastContext'
 import Navbar from './components/Navbar'
 import Home from './pages/Home'
 import PropertyDetail from './pages/PropertyDetail'
@@ -11,6 +12,7 @@ import Brokers from './pages/Brokers'
 
 function App() {
   return (
+    <ToastProvider>
     <AuthProvider>
       <Navbar />
       <Routes>
@@ -23,6 +25,7 @@ function App() {
         <Route path="/brokers"       element={<Brokers />} />
       </Routes>
     </AuthProvider>
+    </ToastProvider>
   )
 }
 

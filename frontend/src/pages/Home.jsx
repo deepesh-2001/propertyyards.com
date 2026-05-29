@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import PropertyCard from '../components/PropertyCard'
+import PropertyCard, { PropertyCardSkeleton } from '../components/PropertyCard'
 import { propertiesAPI } from '../services/api'
 import { TEST_PROPERTIES } from '../data/testData'
 
@@ -83,9 +83,20 @@ export default function Home() {
         </div>
       </div>
 
+      <div style={s.statBar}>
+        <div style={s.statWrap}>
+          {[['15,000+','Active Listings'],['10+','Cities Covered'],['50,000+','Happy Buyers'],['₹50Cr+','Properties Sold']].map(([v,l]) => (
+            <div key={l} style={s.stat}>
+              <span style={s.statVal}>{v}</span>
+              <span style={s.statLabel}>{l}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div style={s.main}>
         {loading ? (
-          <div style={s.loading}>⏳ Loading properties...</div>
+          <div style={s.grid}>{Array(6).fill(0).map((_,i) => <PropertyCardSkeleton key={i} />)}</div>
         ) : filtered.length === 0 ? (
           <div style={s.empty}>No properties found. Try adjusting filters.</div>
         ) : (
@@ -116,8 +127,13 @@ function Section({ title, items }) {
 }
 
 const s = {
-  hero:        { background: 'linear-gradient(135deg, #1a56db 0%, #0e3a8c 100%)', padding: '4rem 2rem 3rem', textAlign: 'center', color: '#fff' },
-  heroH1:      { fontSize: 42, fontWeight: 800, margin: '0 0 0.5rem', letterSpacing: '-1px' },
+  hero:        { background: 'linear-gradient(135deg, #0f172a 0%, #1a56db 60%, #0e3a8c 100%)', padding: '5rem 2rem 3.5rem', textAlign: 'center', color: '#fff' },
+  statBar:    { background: '#fff', borderBottom: '1px solid #e2e8f0', boxShadow: '0 1px 8px rgba(0,0,0,0.05)' },
+  statWrap:   { maxWidth: 1240, margin: '0 auto', padding: '0 1.5rem', display: 'flex', justifyContent: 'space-around', height: 76, alignItems: 'center' },
+  stat:       { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 },
+  statVal:    { fontSize: 22, fontWeight: 800, color: '#1a56db', letterSpacing: '-0.5px' },
+  statLabel:  { fontSize: 12, color: '#64748b', fontWeight: 500 },
+  heroH1:      { fontSize: 46, fontWeight: 900, margin: '0 0 0.75rem', letterSpacing: '-1.5px', lineHeight: 1.1 },
   heroP:       { fontSize: 18, opacity: 0.85, margin: '0 0 2rem' },
   searchBar:   { background: '#fff', borderRadius: 14, padding: '16px 20px', maxWidth: 860, margin: '0 auto 1.5rem', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' },
   searchInput: { width: '100%', border: 'none', outline: 'none', fontSize: 16, padding: '6px 0', borderBottom: '2px solid #e5e7eb', marginBottom: 12, boxSizing: 'border-box' },
@@ -126,7 +142,7 @@ const s = {
   cityPills:   { display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' },
   pill:        { background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.25)', color: '#fff', padding: '6px 18px', borderRadius: 20, fontSize: 14, cursor: 'pointer' },
   pillActive:  { background: '#fff', color: '#1a56db', fontWeight: 700 },
-  main:        { maxWidth: 1200, margin: '0 auto', padding: '3rem 2rem' },
+  main:        { maxWidth: 1240, margin: '0 auto', padding: '3rem 1.5rem' },
   sectionTitle:{ fontSize: 24, fontWeight: 700, marginBottom: '1.2rem', color: '#111827' },
   count:       { fontSize: 16, color: '#6b7280', fontWeight: 400 },
   grid:        { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 24 },

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 export function formatPrice(price, listingType) {
@@ -7,55 +8,108 @@ export function formatPrice(price, listingType) {
   return `₹${price.toLocaleString('en-IN')}`
 }
 
+export function PropertyCardSkeleton() {
+  return (
+    <div style={{ border: '1px solid #e2e8f0', borderRadius: 18, overflow: 'hidden', background: '#fff' }}>
+      <div className="skeleton" style={{ height: 210 }} />
+      <div style={{ padding: '16px' }}>
+        <div className="skeleton" style={{ height: 14, width: '40%', marginBottom: 10 }} />
+        <div className="skeleton" style={{ height: 20, width: '80%', marginBottom: 8 }} />
+        <div className="skeleton" style={{ height: 14, width: '55%', marginBottom: 14 }} />
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[60, 70, 80].map((w, i) => <div key={i} className="skeleton" style={{ height: 28, width: w }} />)}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function PropertyCard({ property }) {
   const { id, title, city, state, price, listing_type, bedrooms, bathrooms, area, images, featured, premium_listing, property_type, furnished } = property
+  const [wishlist, setWishlist] = useState(false)
+  const [hovered, setHovered]  = useState(false)
 
   return (
-    <Link to={`/property/${id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-      <div style={s.card}>
-        <div style={s.imgWrap}>
+    <div
+      style={{ ...s.card, ...(hovered ? s.cardHover : {}) }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="fade-in"
+    >
+      <div style={s.imgWrap}>
+        <Link to={`/property/${id}`}>
           <img
             src={images?.[0] || `https://picsum.photos/seed/${id}/800/600`}
             alt={title}
-            style={s.img}
-            onError={e => { e.target.src = `https://picsum.photos/seed/default${id}/800/600` }}
+            style={{ ...s.img, transform: hovered ? 'scale(1.04)' : 'scale(1)' }}
+            onError={e => { e.target.src = `https://picsum.photos/seed/fallback${id}/800/600` }}
           />
-          <div style={s.badges}>
-            {featured && <span style={{ ...s.badge, background: '#f59e0b' }}>⭐ Featured</span>}
-            {premium_listing && <span style={{ ...s.badge, background: '#7c3aed' }}>Premium</span>}
-          </div>
-          <span style={{ ...s.typeBadge, background: listing_type === 'rent' ? '#059669' : '#1a56db' }}>
-            {listing_type === 'rent' ? 'For Rent' : 'For Sale'}
-          </span>
+        </Link>
+        <div style={s.overlay} />
+
+        <div style={s.topLeft}>
+          {featured        && <span style={{ ...s.tag, background: '#f59e0b' }}>⭐ Featured</span>}
+          {premium_listing && <span style={{ ...s.tag, background: '#7c3aed' }}>✦ Premium</span>}
         </div>
+        <span style={{ ...s.typeTag, background: listing_type === 'rent' ? '#059669' : '#1a56db' }}>
+          {listing_type === 'rent' ? 'For Rent' : 'For Sale'}
+        </span>
+        <button
+          onClick={() => setWishlist(w => !w)}
+          style={{ ...s.heart, background: wishlist ? '#fef2f2' : 'rgba(255,255,255,0.9)' }}
+          title={wishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+        >
+          {wishlist ? '❤️' : '🤍'}
+        </button>
+      </div>
+
+      <Link to={`/property/${id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
         <div style={s.body}>
           <div style={s.price}>{formatPrice(price, listing_type)}</div>
           <div style={s.title}>{title}</div>
-          <div style={s.loc}>📍 {city}, {state}</div>
-          <div style={s.specs}>
-            {bedrooms > 0 && <span style={s.spec}>🛏 {bedrooms} Bed</span>}
-            {bathrooms > 0 && <span style={s.spec}>🚿 {bathrooms} Bath</span>}
-            <span style={s.spec}>📐 {area} sq ft</span>
-            {furnished && <span style={s.spec}>🛋 Furnished</span>}
-            <span style={{ ...s.spec, marginLeft: 'auto', textTransform: 'capitalize', color: '#9ca3af' }}>{property_type}</span>
+          <div style={s.loc}>
+            <span style={s.locDot}>📍</span> {city}, {state}
+          </div>
+          <div style={s.specRow}>
+            {bedrooms  > 0 && <Spec icon="🛏" val={`${bedrooms} Bed`} />}
+            {bathrooms > 0 && <Spec icon="🚿" val={`${bathrooms} Bath`} />}
+            <Spec icon="📐" val={`${area} sq ft`} />
+            {furnished     && <Spec icon="🛋" val="Furnished" />}
+          </div>
+          <div style={s.footer}>
+            <span style={s.propType}>{property_type}</span>
+            <span style={s.viewLink}>View Details →</span>
           </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
+  )
+}
+
+function Spec({ icon, val }) {
+  return (
+    <span style={s.spec}>{icon} {val}</span>
   )
 }
 
 const s = {
-  card:     { border: '1px solid #e5e7eb', borderRadius: 14, overflow: 'hidden', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', transition: 'all 0.2s', cursor: 'pointer' },
-  imgWrap:  { position: 'relative', height: 210 },
-  img:      { width: '100%', height: '100%', objectFit: 'cover' },
-  badges:   { position: 'absolute', top: 10, left: 10, display: 'flex', flexDirection: 'column', gap: 4 },
-  badge:    { color: '#fff', borderRadius: 5, padding: '2px 10px', fontSize: 11, fontWeight: 700 },
-  typeBadge:{ position: 'absolute', top: 10, right: 10, color: '#fff', borderRadius: 6, padding: '3px 12px', fontSize: 12, fontWeight: 600 },
-  body:     { padding: '14px 16px' },
-  price:    { fontSize: 21, fontWeight: 800, color: '#1a56db', marginBottom: 4 },
-  title:    { fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 5, lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' },
-  loc:      { fontSize: 13, color: '#6b7280', marginBottom: 10 },
-  specs:    { display: 'flex', gap: 10, fontSize: 12, color: '#374151', borderTop: '1px solid #f3f4f6', paddingTop: 10, flexWrap: 'wrap' },
-  spec:     { background: '#f9fafb', padding: '3px 8px', borderRadius: 5 },
+  card:     { border: '1px solid #e2e8f0', borderRadius: 18, overflow: 'hidden', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', transition: 'all 0.25s cubic-bezier(.4,0,.2,1)', cursor: 'pointer' },
+  cardHover:{ boxShadow: '0 12px 40px rgba(0,0,0,0.12)', transform: 'translateY(-4px)' },
+  imgWrap:  { position: 'relative', height: 215, overflow: 'hidden' },
+  img:      { width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s ease', display: 'block' },
+  overlay:  { position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 50%)', pointerEvents: 'none' },
+  topLeft:  { position: 'absolute', top: 10, left: 10, display: 'flex', flexDirection: 'column', gap: 4 },
+  tag:      { color: '#fff', borderRadius: 6, padding: '3px 10px', fontSize: 11, fontWeight: 700, backdropFilter: 'blur(4px)' },
+  typeTag:  { position: 'absolute', bottom: 10, left: 10, color: '#fff', borderRadius: 8, padding: '4px 12px', fontSize: 12, fontWeight: 700, backdropFilter: 'blur(4px)' },
+  heart:    { position: 'absolute', top: 10, right: 10, border: 'none', borderRadius: '50%', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'transform 0.2s' },
+  body:     { padding: '16px 18px' },
+  price:    { fontSize: 22, fontWeight: 800, color: '#1a56db', marginBottom: 6, letterSpacing: '-0.5px' },
+  title:    { fontSize: 14, fontWeight: 600, color: '#0f172a', marginBottom: 6, lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' },
+  loc:      { fontSize: 13, color: '#64748b', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 4 },
+  locDot:   { fontSize: 12 },
+  specRow:  { display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
+  spec:     { background: '#f1f5f9', color: '#475569', fontSize: 12, fontWeight: 500, padding: '4px 10px', borderRadius: 6 },
+  footer:   { display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: 10 },
+  propType: { fontSize: 12, color: '#94a3b8', textTransform: 'capitalize', fontWeight: 500 },
+  viewLink: { fontSize: 12, color: '#1a56db', fontWeight: 700 },
 }
